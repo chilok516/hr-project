@@ -31,6 +31,11 @@ a {
   padding: 16px;
 }
 
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .green { color: var(--accent); }
 .red { color: var(--red); }
 .yellow { color: var(--yellow); }
@@ -39,6 +44,7 @@ table.data {
   width: 100%;
   border-collapse: collapse;
   font-size: 12px;
+  min-width: 480px;
 }
 table.data th {
   text-align: left;
@@ -65,4 +71,12 @@ input, select {
   border-radius: 4px;
   font-size: 13px;
   font-family: inherit;
+  max-width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  body { font-size: 13px; }
+  .card { padding: 12px; }
+  input, select { font-size: 16px; padding: 8px 10px; width: 100%; }
 }

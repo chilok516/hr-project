@@ -101,6 +101,7 @@ export default function Predictions() {
             <h2 className="text-sm font-semibold mb-3" style={{ color: "#888" }}>
               Horse Probabilities (sorted by fundamental)
             </h2>
+            <div className="table-scroll">
             <table className="data">
               <thead>
                 <tr>
@@ -124,6 +125,7 @@ export default function Predictions() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="card">
@@ -133,6 +135,7 @@ export default function Predictions() {
             {prediction.combos.length === 0 ? (
               <p style={{ color: "#888" }}>No combos passed the EV filter for this race.</p>
             ) : (
+              <div className="table-scroll">
               <table className="data">
                 <thead>
                   <tr><th>Combo</th><th>Prob</th><th>Est Dividend</th><th>EV</th></tr>
@@ -148,6 +151,7 @@ export default function Predictions() {
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </div>
         </div>

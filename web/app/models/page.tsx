@@ -55,6 +55,7 @@ export default function Models() {
         <p style={{ color: "#888" }}>Loading...</p>
       ) : (
         <div className="card">
+          <div className="table-scroll">
           <table className="data">
             <thead>
               <tr><th>Feature</th><th>Importance</th><th></th></tr>
@@ -80,6 +81,7 @@ export default function Models() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

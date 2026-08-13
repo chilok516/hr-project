@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "HKJC Quinella Prediction",
   description: "Systematic HKJC quinella betting prediction system",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 const navItems = [
@@ -20,11 +25,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <header className="border-b" style={{ borderColor: "var(--border)" }}>
-          <div className="flex items-center gap-6 px-6 py-4 max-w-7xl mx-auto">
-            <Link href="/" className="font-bold text-lg" style={{ color: "var(--accent)" }}>
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 sm:px-6 py-3 sm:py-4 max-w-7xl mx-auto">
+            <Link href="/" className="font-bold text-lg whitespace-nowrap" style={{ color: "var(--accent)" }}>
               🏇 HKJC Quinella
             </Link>
-            <nav className="flex gap-4 text-sm">
+            <nav className="flex gap-4 text-sm flex-wrap">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -38,7 +43,7 @@ export default function RootLayout({
             </nav>
           </div>
         </header>
-        <main className="max-w-7xl mx-auto px-6 py-6">{children}</main>
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">{children}</main>
       </body>
     </html>
   );
