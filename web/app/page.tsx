@@ -116,28 +116,41 @@ export default function Live() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-2">
-          {races.map((r) => (
-            <button
-              key={`${r.venue}-${r.race_no}`}
-              onClick={() => setSelected(r)}
-              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
-                selected === r
-                  ? "border-accent bg-accent text-white"
-                  : "border-border bg-white text-foreground hover:border-gray-300"
-              }`}
-            >
-              <div className="text-sm font-bold">
-                {lang === "zh" ? "第" : "R"}{r.race_no} · {raceTime(r.venue, r.race_no)}
-              </div>
-              <div className={`mt-1 text-xs ${selected === r ? "text-white/80" : "text-muted"}`}>
-                {venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)}
-              </div>
-              <div className={`text-xs ${selected === r ? "text-white/80" : "text-muted"}`}>
-                {classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}
-              </div>
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2.5">
+          {races.map((r) => {
+            const active = selected === r;
+            return (
+              <button
+                key={`${r.venue}-${r.race_no}`}
+                onClick={() => setSelected(r)}
+                className={`flex items-center gap-3 rounded-xl border px-3.5 py-2.5 text-left transition-colors ${
+                  active
+                    ? "border-accent bg-accent/10"
+                    : "border-border bg-white hover:border-gray-300"
+                }`}
+              >
+                <span
+                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base font-bold tabular-nums ${
+                    active ? "bg-accent text-white" : "bg-gray-100 text-foreground"
+                  }`}
+                >
+                  {r.race_no}
+                </span>
+                <span className="flex flex-col">
+                  <span
+                    className={`font-mono text-[15px] font-bold leading-none tabular-nums ${
+                      active ? "text-accent" : "text-foreground"
+                    }`}
+                  >
+                    {raceTime(r.venue, r.race_no)}
+                  </span>
+                  <span className={`mt-1 text-xs leading-tight ${active ? "text-accent/80" : "text-muted"}`}>
+                    {venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)} · {classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
