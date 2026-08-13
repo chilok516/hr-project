@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { api, Bet } from "@/lib/api";
+import { useLang } from "@/lib/LanguageContext";
+import { pickName, venueLabel } from "@/lib/i18n";
 
 export default function Backtest() {
+  const { lang, t } = useLang();
   const [bets, setBets] = useState<Bet[]>([]);
   const [total, setTotal] = useState(0);
   const [result, setResult] = useState("all");
@@ -43,31 +46,31 @@ export default function Backtest() {
   return (
     <div>
       <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        Backtest Bets
+        {t("backtestTitle")}
       </h1>
       <p className="text-xs mb-5" style={{ color: "#666" }}>
-        {total.toLocaleString()} total bets · showing {offset + 1}–{Math.min(offset + limit, total)}
+        {total.toLocaleString()} {lang === "zh" ? "注 · 顯示" : "total bets · showing"} {offset + 1}–{Math.min(offset + limit, total)}
       </p>
 
       <div className="flex flex-wrap gap-3 mb-4">
         <select value={result} onChange={(e) => { setResult(e.target.value); setOffset(0); }}>
-          <option value="all">All Results</option>
-          <option value="WIN">Wins</option>
-          <option value="LOSS">Losses</option>
+          <option value="all">{t("all")}</option>
+          <option value="WIN">{t("wins")}</option>
+          <option value="LOSS">{t("losses")}</option>
         </select>
         <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }}>
-          <option value="all">All Venues</option>
-          <option value="ST">Sha Tin</option>
-          <option value="HV">Happy Valley</option>
+          <option value="all">{t("venues")}</option>
+          <option value="ST">{venueLabel("ST", lang)}</option>
+          <option value="HV">{venueLabel("HV", lang)}</option>
         </select>
         <input
-          placeholder="Search horse..."
+          placeholder={t("searchHorse")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <input
           type="number"
-          placeholder="Min dividend"
+          placeholder={t("minDiv")}
           value={minDiv}
           onChange={(e) => setMinDiv(e.target.value)}
           style={{ width: 120 }}
@@ -75,9 +78,9 @@ export default function Backtest() {
       </div>
 
       <div className="flex flex-wrap gap-4 text-xs mb-3" style={{ color: "#aaa" }}>
-        <span>Page: <span className="green">{bets.length}</span> bets</span>
-        <span>Wins: <span className="green">{wins}</span> ({bets.length ? (wins / bets.length * 100).toFixed(1) : 0}%)</span>
-        <span>P&L: <span className={pnl > 0 ? "green" : "red"}>${pnl.toLocaleString()}</span></span>
+        <span>{t("page")}: <span className="green">{bets.length}</span></span>
+        <span>{t("wins")}: <span className="green">{wins}</span> ({bets.length ? (wins / bets.length * 100).toFixed(1) : 0}%)</span>
+        <span>{t("profit")}: <span className={pnl > 0 ? "green" : "red"}>${pnl.toLocaleString()}</span></span>
         <span>ROI: <span className={pnl > 0 ? "green" : "red"}>{staked ? (pnl / staked * 100).toFixed(1) : 0}%</span></span>
       </div>
 
@@ -85,36 +88,38 @@ export default function Backtest() {
         <table className="data">
           <thead>
             <tr>
-              <th onClick={() => toggleSort("date")}>Date</th>
+              <th onClick={() => toggleSort("date")}>{t("date")}</th>
               <th onClick={() => toggleSort("venue")}>V</th>
               <th onClick={() => toggleSort("race_no")}>R#</th>
-              <th>Combo</th>
-              <th onClick={() => toggleSort("prob")}>Prob</th>
-              <th onClick={() => toggleSort("est_div")}>Est Div</th>
-              <th onClick={() => toggleSort("ev")}>EV</th>
-              <th onClick={() => toggleSort("stake")}>Stake</th>
-              <th onClick={() => toggleSort("result")}>Result</th>
-              <th onClick={() => toggleSort("actual_div")}>Actual Div</th>
-              <th onClick={() => toggleSort("profit")}>P&L</th>
+              <th>{t("combo")}</th>
+              <th onClick={() => toggleSort("prob")}>{t("prob")}</th>
+              <th onClick={() => toggleSort("est_div")}>{t("estDiv")}</th>
+              <th onClick={() => toggleSort("ev")}>{t("ev")}</th>
+              <th onClick={() => toggleSort("stake")}>{t("stake")}</th>
+              <th onClick={() => toggleSort("result")}>{t("result")}</th>
+              <th onClick={() => toggleSort("actual_div")}>{t("actual")}</th>
+              <th onClick={() => toggleSort("profit")}>{t("profit")}</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={11} style={{ color: "#888" }}>Loading...</td></tr>
+              <tr><td colSpan={11} style={{ color: "#888" }}>{t("loading")}</td></tr>
             ) : (
               sorted.map((b, i) => (
                 <tr key={i} className={b.result === "WIN" ? "win" : ""}>
                   <td>{b.date}</td>
                   <td>{b.venue}</td>
                   <td>{b.race_no}</td>
-                  <td className="font-semibold">{b.combo}</td>
+                  <td className="font-semibold">
+                    {b.horse_i_no}.{pickName(lang, b.horse_i, b.horse_i_cn)} + {b.horse_j_no}.{pickName(lang, b.horse_j, b.horse_j_cn)}
+                  </td>
                   <td>{(b.prob * 100).toFixed(2)}%</td>
                   <td>${b.est_div}</td>
                   <td>{b.ev.toFixed(3)}</td>
                   <td>${b.stake}</td>
                   <td>
                     <span style={{ color: b.result === "WIN" ? "var(--accent)" : "var(--red)", fontWeight: "bold" }}>
-                      {b.result}
+                      {b.result === "WIN" ? t("wins") : t("losses")}
                     </span>
                   </td>
                   <td>{b.actual_div > 0 ? "$" + b.actual_div : "—"}</td>
@@ -135,7 +140,7 @@ export default function Backtest() {
           style={{ opacity: offset === 0 ? 0.4 : 1 }}
           className="px-4 py-2 rounded border"
         >
-          Prev
+          {t("prev")}
         </button>
         <button
           onClick={() => setOffset(offset + limit)}
@@ -143,7 +148,7 @@ export default function Backtest() {
           style={{ opacity: offset + limit >= total ? 0.4 : 1 }}
           className="px-4 py-2 rounded border"
         >
-          Next
+          {t("next")}
         </button>
       </div>
     </div>

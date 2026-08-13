@@ -28,6 +28,7 @@ class PredictionService:
         self.race_card_scraper = RaceCardScraper()
         # Cache: date -> list of race card results (avoid re-scrape per request)
         self._live_cache: dict = {}
+        self.cn_names: dict = {"horses": {}, "jockeys": {}, "trainers": {}}
 
     def load(self):
         self._load_models()
@@ -35,6 +36,27 @@ class PredictionService:
         self._load_raw()
         self._load_bets()
         self._load_cold_score()
+        self._load_cn_names()
+
+    def _load_cn_names(self):
+        path = DATA_PROCESSED / "names_cn.json"
+        if path.exists():
+            try:
+                with open(path) as f:
+                    self.cn_names = json.load(f)
+                logger.info(f"Chinese names loaded: {len(self.cn_names.get('horses', {}))} horses, "
+                            f"{len(self.cn_names.get('jockeys', {}))} jockeys")
+            except Exception as e:
+                logger.warning(f"Failed to load Chinese names: {e}")
+
+    def _cn_horse(self, name: str) -> str:
+        return self.cn_names.get("horses", {}).get(name, "")
+
+    def _cn_jockey(self, name: str) -> str:
+        return self.cn_names.get("jockeys", {}).get(name, "")
+
+    def _cn_trainer(self, name: str) -> str:
+        return self.cn_names.get("trainers", {}).get(name, "")
 
     def _load_models(self):
         self.predictor = RacePredictor()
@@ -113,11 +135,17 @@ class PredictionService:
         # Build horse list
         horses = []
         for _, row in pred.iterrows():
+            hname = str(row.get("horse_name", ""))
+            jname = str(row.get("jockey", ""))
+            tname = str(row.get("trainer", ""))
             horses.append({
                 "horse_no": int(row.get("horse_no", 0)),
-                "horse_name": str(row.get("horse_name", "")),
-                "jockey": str(row.get("jockey", "")),
-                "trainer": str(row.get("trainer", "")),
+                "horse_name": hname,
+                "horse_name_cn": self._cn_horse(hname),
+                "jockey": jname,
+                "jockey_cn": self._cn_jockey(jname),
+                "trainer": tname,
+                "trainer_cn": self._cn_trainer(tname),
                 "win_odds": float(row.get("win_odds", 0)),
                 "finish_pos": int(row.get("finish_pos", 0)),
                 "fund_prob": float(row.get("fund_prob", 0)),
@@ -134,6 +162,8 @@ class PredictionService:
                 combos.append({
                     "horse_i": c.horse_i,
                     "horse_j": c.horse_j,
+                    "horse_i_cn": self._cn_horse(c.horse_i),
+                    "horse_j_cn": self._cn_horse(c.horse_j),
                     "horse_i_no": c.horse_i_no,
                     "horse_j_no": c.horse_j_no,
                     "prob": round(c.quinella_prob, 4),
@@ -282,13 +312,19 @@ class PredictionService:
         cold_by_no = {}
         for i, (_, row) in enumerate(pred.iterrows()):
             hno = int(row.get("horse_no", 0))
+            hname = str(row.get("horse_name", ""))
+            jname = str(row.get("jockey", ""))
+            tname = str(row.get("trainer", ""))
             cs = float(cold_scores[i]) if i < len(cold_scores) else 0.0
             cold_by_no[hno] = cs
             horses.append({
                 "horse_no": hno,
-                "horse_name": str(row.get("horse_name", "")),
-                "jockey": str(row.get("jockey", "")),
-                "trainer": str(row.get("trainer", "")),
+                "horse_name": hname,
+                "horse_name_cn": self._cn_horse(hname),
+                "jockey": jname,
+                "jockey_cn": self._cn_jockey(jname),
+                "trainer": tname,
+                "trainer_cn": self._cn_trainer(tname),
                 "draw": int(row.get("draw", 0)),
                 "weight": int(row.get("weight", 0)),
                 "win_odds": float(row.get("win_odds", 0)) if pd.notna(row.get("win_odds", np.nan)) else 0.0,
@@ -310,6 +346,8 @@ class PredictionService:
                 combos.append({
                     "horse_i": c.horse_i,
                     "horse_j": c.horse_j,
+                    "horse_i_cn": self._cn_horse(c.horse_i),
+                    "horse_j_cn": self._cn_horse(c.horse_j),
                     "horse_i_no": c.horse_i_no,
                     "horse_j_no": c.horse_j_no,
                     "prob": round(c.quinella_prob, 4),
@@ -357,12 +395,24 @@ class PredictionService:
         if venue and venue != "all":
             bets = [b for b in bets if b["venue"] == venue]
         if search:
-            bets = [b for b in bets if search.lower() in b.get("combo", "").lower()]
+            s = search.lower()
+            bets = [
+                b for b in bets
+                if s in b.get("combo", "").lower()
+                or s in self._cn_horse(b.get("horse_i", "")).lower()
+                or s in self._cn_horse(b.get("horse_j", "")).lower()
+            ]
         if min_div and min_div > 0:
             bets = [b for b in bets if b.get("actual_div", 0) >= min_div]
 
         total = len(bets)
         page = bets[offset:offset + limit]
+
+        # Enrich with Chinese names
+        for b in page:
+            b["horse_i_cn"] = self._cn_horse(b.get("horse_i", ""))
+            b["horse_j_cn"] = self._cn_horse(b.get("horse_j", ""))
+
         return {"bets": page, "total": total}
 
     # ---- Models ----

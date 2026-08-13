@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { api, FeatureImportance } from "@/lib/api";
+import { useLang } from "@/lib/LanguageContext";
 
 const modelOptions = [
-  { value: "fundamental", label: "Fundamental (no odds)" },
-  { value: "top2", label: "Top2 (no odds)" },
-  { value: "market", label: "Market (with odds)" },
-  { value: "place", label: "Place" },
+  { value: "fundamental", label_en: "Fundamental (no odds)", label_zh: "基本面（無賠率）" },
+  { value: "top2", label_en: "Top2 (no odds)", label_zh: "前二（無賠率）" },
+  { value: "market", label_en: "Market (with odds)", label_zh: "市場（含賠率）" },
+  { value: "place", label_en: "Place", label_zh: "位置" },
 ];
 
 export default function Models() {
+  const { lang, t } = useLang();
   const [model, setModel] = useState("top2");
   const [features, setFeatures] = useState<FeatureImportance[]>([]);
   const [loading, setLoading] = useState(false);
@@ -27,13 +29,13 @@ export default function Models() {
   return (
     <div>
       <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        Model Feature Importance
+        {t("modelsTitle")}
       </h1>
       <p className="text-xs mb-5" style={{ color: "#666" }}>
-        4 LightGBM models · date-grouped CV · Platt calibration
+        {t("modelsSub")}
       </p>
 
-      <div className="flex gap-3 mb-5">
+      <div className="flex flex-wrap gap-3 mb-5">
         {modelOptions.map((m) => (
           <button
             key={m.value}
@@ -46,19 +48,19 @@ export default function Models() {
               fontWeight: model === m.value ? "bold" : "normal",
             }}
           >
-            {m.label}
+            {lang === "zh" ? m.label_zh : m.label_en}
           </button>
         ))}
       </div>
 
       {loading ? (
-        <p style={{ color: "#888" }}>Loading...</p>
+        <p style={{ color: "#888" }}>{t("loading")}</p>
       ) : (
         <div className="card">
           <div className="table-scroll">
           <table className="data">
             <thead>
-              <tr><th>Feature</th><th>Importance</th><th></th></tr>
+              <tr><th>{t("feature")}</th><th>{t("importance")}</th><th></th></tr>
             </thead>
             <tbody>
               {features.map((f) => (

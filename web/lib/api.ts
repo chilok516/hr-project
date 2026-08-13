@@ -12,8 +12,11 @@ export interface RaceInfo {
 export interface Horse {
   horse_no: number;
   horse_name: string;
+  horse_name_cn: string;
   jockey: string;
+  jockey_cn: string;
   trainer: string;
+  trainer_cn: string;
   win_odds: number;
   finish_pos: number;
   fund_prob: number;
@@ -25,6 +28,8 @@ export interface Horse {
 export interface Combo {
   horse_i: string;
   horse_j: string;
+  horse_i_cn: string;
+  horse_j_cn: string;
   horse_i_no: number;
   horse_j_no: number;
   prob: number;
@@ -58,6 +63,10 @@ export interface Bet {
   combo: string;
   horse_i: string;
   horse_j: string;
+  horse_i_cn: string;
+  horse_j_cn: string;
+  horse_i_no: number;
+  horse_j_no: number;
   prob: number;
   est_div: number;
   ev: number;
@@ -94,8 +103,11 @@ export interface LiveRaceSummary {
 export interface LiveHorse {
   horse_no: number;
   horse_name: string;
+  horse_name_cn: string;
   jockey: string;
+  jockey_cn: string;
   trainer: string;
+  trainer_cn: string;
   draw: number;
   weight: number;
   win_odds: number;
@@ -109,6 +121,8 @@ export interface LiveHorse {
 export interface LiveCombo {
   horse_i: string;
   horse_j: string;
+  horse_i_cn: string;
+  horse_j_cn: string;
   horse_i_no: number;
   horse_j_no: number;
   prob: number;
