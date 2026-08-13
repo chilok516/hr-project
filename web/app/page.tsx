@@ -211,7 +211,7 @@ export default function Live() {
                         <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
                         <td className="tabular-nums">{h.draw}</td>
                         <td className="tabular-nums">{h.weight}</td>
-                        <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                        <td className="font-bold text-lg tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
                         <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
                         {hasOdds && <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>}
                         {hasOdds && (
@@ -237,7 +237,7 @@ export default function Live() {
                         <span className="saddlecloth">{h.horse_no}</span>
                         <span className="truncate">{pickName(lang, h.horse_name, h.horse_name_cn)}</span>
                       </span>
-                      <span className="shrink-0 font-medium tabular-nums text-accent">
+                      <span className="shrink-0 text-lg font-bold tabular-nums text-accent">
                         {(h.fund_prob * 100).toFixed(1)}%
                       </span>
                     </span>
@@ -249,7 +249,7 @@ export default function Live() {
                   <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                     <div><div className="text-muted">{t("draw")}</div><div className="mt-0.5 font-medium tabular-nums">{h.draw}</div></div>
                     <div><div className="text-muted">{t("weight")}</div><div className="mt-0.5 font-medium tabular-nums">{h.weight}</div></div>
-                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
+                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 text-base font-bold tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
                     {hasOdds && <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>}
                     {hasOdds && <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>}

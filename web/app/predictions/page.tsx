@@ -121,7 +121,7 @@ export default function Predictions() {
                         <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
                         <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
                         <td className="tabular-nums">{h.win_odds.toFixed(1)}</td>
-                        <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                        <td className="font-bold text-lg tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
                         <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
                         <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
                         <td className="tabular-nums">{(h.place_prob * 100).toFixed(1)}%</td>
@@ -148,7 +148,7 @@ export default function Predictions() {
                         <span className="saddlecloth">{h.horse_no}</span>
                         <span className="truncate">{pickName(lang, h.horse_name, h.horse_name_cn)}</span>
                       </span>
-                      <span className="shrink-0 font-medium tabular-nums text-accent">
+                      <span className="shrink-0 text-lg font-bold tabular-nums text-accent">
                         {(h.fund_prob * 100).toFixed(1)}%
                       </span>
                       {h.finish_pos === 1 && <span className="badge badge-green">1</span>}
@@ -160,7 +160,7 @@ export default function Predictions() {
                   </div>
                   <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                     <div><div className="text-muted">{t("odds")}</div><div className="mt-0.5 font-medium tabular-nums">{h.win_odds.toFixed(1)}</div></div>
-                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
+                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 text-base font-bold tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("place")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.place_prob * 100).toFixed(1)}%</div></div>
