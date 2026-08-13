@@ -21,7 +21,7 @@ export default function RootLayout({
       <body className="font-sans">
         <LanguageProvider>
           <Header />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
+          <main className="px-4 sm:px-6 lg:px-10 py-6 sm:py-8">{children}</main>
         </LanguageProvider>
       </body>
     </html>
