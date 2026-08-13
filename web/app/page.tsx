@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api, LiveRaceSummary, LivePrediction } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
 import { classLabel, goingLabel, distLabel, venueLabel, pickName } from "@/lib/i18n";
+import InfoTip from "@/components/InfoTip";
 
 function raceTime(venue: string, raceNo: number): string {
   const base = venue === "HV" ? { h: 19, m: 15 } : { h: 13, m: 0 };
@@ -173,8 +174,12 @@ export default function Live() {
                 <thead>
                   <tr>
                     <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th>
-                    <th>{t("draw")}</th><th>{t("weight")}</th>
-                    <th>{t("fund")}</th><th>{t("top2")}</th><th>{t("mkt")}</th><th>{t("cold")}</th>
+                    <th><span className="inline-flex items-center">{t("draw")}<InfoTip text={t("drawTip")} /></span></th>
+                    <th><span className="inline-flex items-center">{t("weight")}<InfoTip text={t("weightTip")} /></span></th>
+                    <th><span className="inline-flex items-center">{t("fund")}<InfoTip text={t("fundTip")} /></span></th>
+                    <th><span className="inline-flex items-center">{t("top2")}<InfoTip text={t("top2Tip")} /></span></th>
+                    <th><span className="inline-flex items-center">{t("mkt")}<InfoTip text={t("mktTip")} /></span></th>
+                    <th><span className="inline-flex items-center">{t("cold")}<InfoTip text={t("coldTip")} /></span></th>
                   </tr>
                 </thead>
                 <tbody>

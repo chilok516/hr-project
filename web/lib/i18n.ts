@@ -61,6 +61,12 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     races: "Races",
     distance: "Distance",
     going: "Going",
+    drawTip: "Gate position (1 = innermost rail). Inside draws usually help over short distances.",
+    weightTip: "Weight carried by the horse, including jockey and gear. Heavier is a bigger handicap.",
+    fundTip: "Model win probability from historical form only (no odds).",
+    top2Tip: "Model probability the horse finishes in the top two (quinella).",
+    mktTip: "Implied win probability derived from the market odds.",
+    coldTip: "Cold score — how undervalued the market has priced this horse; higher means a bigger longshot.",
   },
   zh: {
     live: "即場",
@@ -118,6 +124,12 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     races: "場次",
     distance: "距離",
     going: "場地",
+    drawTip: "閘位號碼（1＝最內欄）。短途賽內欄通常較有利。",
+    weightTip: "馬匹負載磅數，包括騎師及裝備重量；負磅越重負擔越大。",
+    fundTip: "模型根據馬匹歷史表現（不含賠率）計算的贏馬機率。",
+    top2Tip: "模型預測馬匹跑入頭兩名（連贏）的機率。",
+    mktTip: "由市場賠率推算的隱含贏馬機率。",
+    coldTip: "冷門分 — 馬匹被市場低估的程度，越高代表越冷門。",
   },
 };
 
