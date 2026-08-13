@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, Prediction, RaceSummary } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
 import { classLabel, goingLabel, distLabel, venueLabel, pickName } from "@/lib/i18n";
+import CollapsibleCard from "@/components/CollapsibleCard";
 
 export default function Predictions() {
   const { lang, t } = useLang();
@@ -104,65 +105,36 @@ export default function Predictions() {
 
           <div className="card">
             <h2 className="mb-3 text-sm font-semibold text-muted">{t("horseProbs")}</h2>
-            <div className="hidden md:block">
-              <div className="table-scroll">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th><th>{t("odds")}</th>
-                      <th>{t("fund")}</th><th>{t("top2")}</th><th>{t("mkt")}</th><th>{t("place")}</th><th>{t("actual")}</th>
+            <div className="table-scroll">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th><th>{t("odds")}</th>
+                    <th>{t("fund")}</th><th>{t("top2")}</th><th>{t("mkt")}</th><th>{t("place")}</th><th>{t("actual")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prediction.horses.map((h) => (
+                    <tr key={h.horse_no} className={h.finish_pos === 1 ? "win" : ""}>
+                      <td><span className="saddlecloth">{h.horse_no}</span></td>
+                      <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
+                      <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
+                      <td className="tabular-nums">{h.win_odds.toFixed(1)}</td>
+                      <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.place_prob * 100).toFixed(1)}%</td>
+                      <td>
+                        {h.finish_pos === 1 ? (
+                          <span className="badge badge-green">1</span>
+                        ) : (
+                          <span className="tabular-nums">{h.finish_pos}</span>
+                        )}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {prediction.horses.map((h) => (
-                      <tr key={h.horse_no} className={h.finish_pos === 1 ? "win" : ""}>
-                        <td><span className="saddlecloth">{h.horse_no}</span></td>
-                        <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                        <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
-                        <td className="tabular-nums">{h.win_odds.toFixed(1)}</td>
-                        <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(h.place_prob * 100).toFixed(1)}%</td>
-                        <td>
-                          {h.finish_pos === 1 ? (
-                            <span className="badge badge-green">1</span>
-                          ) : (
-                            <span className="tabular-nums">{h.finish_pos}</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="space-y-3 md:hidden">
-              {prediction.horses.map((h) => (
-                <div
-                  key={h.horse_no}
-                  className={`rounded-xl border bg-white p-3 ${
-                    h.finish_pos === 1 ? "border-accent/40 bg-emerald-50/50" : "border-border"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="saddlecloth">{h.horse_no}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</div>
-                      <div className="truncate text-xs text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</div>
-                    </div>
-                    {h.finish_pos === 1 && <span className="badge badge-green">1</span>}
-                  </div>
-                  <div className="mt-3 grid grid-cols-3 gap-y-2.5 text-xs">
-                    <div><div className="text-muted">{t("odds")}</div><div className="mt-0.5 font-medium tabular-nums">{h.win_odds.toFixed(1)}</div></div>
-                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("place")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.place_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("actual")}</div><div className="mt-0.5 font-medium tabular-nums">{h.finish_pos}</div></div>
-                  </div>
-                </div>
-              ))}
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -205,20 +177,29 @@ export default function Predictions() {
                 </div>
                 <div className="space-y-3 md:hidden">
                   {prediction.combos.map((c, i) => (
-                    <div key={i} className="rounded-xl border border-border bg-white p-3">
-                      <div className="flex items-center gap-2 font-semibold">
-                        <span className="saddlecloth">{c.horse_i_no}</span>
-                        <span className="truncate">{pickName(lang, c.horse_i, c.horse_i_cn)}</span>
-                        <span className="text-muted">+</span>
-                        <span className="saddlecloth">{c.horse_j_no}</span>
-                        <span className="truncate">{pickName(lang, c.horse_j, c.horse_j_cn)}</span>
-                      </div>
-                      <div className="mt-3 grid grid-cols-3 gap-y-2.5 text-xs">
+                    <CollapsibleCard
+                      key={i}
+                      header={
+                        <span className="flex items-center gap-2">
+                          <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+                            <span className="saddlecloth">{c.horse_i_no}</span>
+                            <span className="truncate">{pickName(lang, c.horse_i, c.horse_i_cn)}</span>
+                            <span className="text-muted">+</span>
+                            <span className="saddlecloth">{c.horse_j_no}</span>
+                            <span className="truncate">{pickName(lang, c.horse_j, c.horse_j_cn)}</span>
+                          </span>
+                          <span className={`badge shrink-0 ${c.ev > 0.4 ? "badge-green" : "badge-red"}`}>
+                            {c.ev.toFixed(3)}
+                          </span>
+                        </span>
+                      }
+                    >
+                      <div className="grid grid-cols-3 gap-y-2.5 text-xs">
                         <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(c.prob * 100).toFixed(2)}%</div></div>
                         <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${c.est_dividend}</div></div>
                         <div><div className="text-muted">{t("ev")}</div><div className="mt-0.5"><span className={`badge ${c.ev > 0.4 ? "badge-green" : "badge-red"}`}>{c.ev.toFixed(3)}</span></div></div>
                       </div>
-                    </div>
+                    </CollapsibleCard>
                   ))}
                 </div>
               </>

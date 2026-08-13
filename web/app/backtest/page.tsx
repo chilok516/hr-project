@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { api, Bet } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
 import { pickName, venueLabel } from "@/lib/i18n";
+import CollapsibleCard from "@/components/CollapsibleCard";
 
 export default function Backtest() {
   const { lang, t } = useLang();
@@ -165,26 +166,27 @@ export default function Backtest() {
           <p className="text-muted">{t("loading")}</p>
         ) : (
           sorted.map((b, i) => (
-            <div
+            <CollapsibleCard
               key={i}
-              className={`rounded-xl border bg-white p-3 ${
-                b.result === "WIN" ? "border-accent/40 bg-emerald-50/50" : "border-border"
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs text-muted">
-                <span>{b.date} · {b.venue} · {lang === "zh" ? "第" : "R"}{b.race_no}</span>
-                <span className={`badge ${b.result === "WIN" ? "badge-green" : "badge-red"}`}>
-                  {b.result === "WIN" ? t("wins") : t("losses")}
+              header={
+                <span className="flex flex-col gap-1.5">
+                  <span className="flex items-center justify-between text-xs text-muted">
+                    <span>{b.date} · {b.venue} · {lang === "zh" ? "第" : "R"}{b.race_no}</span>
+                    <span className={`badge shrink-0 ${b.result === "WIN" ? "badge-green" : "badge-red"}`}>
+                      {b.result === "WIN" ? t("wins") : t("losses")}
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-2 font-semibold">
+                    <span className="saddlecloth">{b.horse_i_no}</span>
+                    <span className="truncate">{pickName(lang, b.horse_i, b.horse_i_cn)}</span>
+                    <span className="text-muted">+</span>
+                    <span className="saddlecloth">{b.horse_j_no}</span>
+                    <span className="truncate">{pickName(lang, b.horse_j, b.horse_j_cn)}</span>
+                  </span>
                 </span>
-              </div>
-              <div className="mt-2 flex items-center gap-2 font-semibold">
-                <span className="saddlecloth">{b.horse_i_no}</span>
-                <span className="truncate">{pickName(lang, b.horse_i, b.horse_i_cn)}</span>
-                <span className="text-muted">+</span>
-                <span className="saddlecloth">{b.horse_j_no}</span>
-                <span className="truncate">{pickName(lang, b.horse_j, b.horse_j_cn)}</span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-y-2.5 text-xs">
+              }
+            >
+              <div className="grid grid-cols-3 gap-y-2.5 text-xs">
                 <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(b.prob * 100).toFixed(2)}%</div></div>
                 <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${b.est_div}</div></div>
                 <div><div className="text-muted">{t("ev")}</div><div className="mt-0.5 font-medium tabular-nums">{b.ev.toFixed(3)}</div></div>
@@ -192,7 +194,7 @@ export default function Backtest() {
                 <div><div className="text-muted">{t("actual")}</div><div className="mt-0.5 font-medium tabular-nums">{b.actual_div > 0 ? "$" + b.actual_div : "—"}</div></div>
                 <div><div className="text-muted">{t("profit")}</div><div className={`mt-0.5 font-semibold tabular-nums ${b.profit > 0 ? "text-accent" : "text-danger"}`}>{b.profit > 0 ? "+" : ""}${b.profit.toLocaleString()}</div></div>
               </div>
-            </div>
+            </CollapsibleCard>
           ))
         )}
       </div>
