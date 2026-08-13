@@ -183,39 +183,71 @@ export default function Live() {
 
           <div className="card">
             <h2 className="mb-3 text-sm font-semibold text-muted">{t("horseProbs")}</h2>
-            <div className="table-scroll">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th>
-                    <th><span className="inline-flex items-center">{t("draw")}<InfoTip text={t("drawTip")} /></span></th>
-                    <th><span className="inline-flex items-center">{t("weight")}<InfoTip text={t("weightTip")} /></span></th>
-                    <th><span className="inline-flex items-center">{t("fund")}<InfoTip text={t("fundTip")} /></span></th>
-                    <th><span className="inline-flex items-center">{t("top2")}<InfoTip text={t("top2Tip")} /></span></th>
-                    <th><span className="inline-flex items-center">{t("mkt")}<InfoTip text={t("mktTip")} /></span></th>
-                    <th><span className="inline-flex items-center">{t("cold")}<InfoTip text={t("coldTip")} /></span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {prediction.horses.map((h) => (
-                    <tr key={h.horse_no}>
-                      <td><span className="saddlecloth">{h.horse_no}</span></td>
-                      <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                      <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
-                      <td className="tabular-nums">{h.draw}</td>
-                      <td className="tabular-nums">{h.weight}</td>
-                      <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
-                      <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
-                      <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
-                      <td>
-                        <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
-                          {h.cold_score.toFixed(1)}
-                        </span>
-                      </td>
+            <div className="hidden md:block">
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th>
+                      <th><span className="inline-flex items-center">{t("draw")}<InfoTip text={t("drawTip")} /></span></th>
+                      <th><span className="inline-flex items-center">{t("weight")}<InfoTip text={t("weightTip")} /></span></th>
+                      <th><span className="inline-flex items-center">{t("fund")}<InfoTip text={t("fundTip")} /></span></th>
+                      <th><span className="inline-flex items-center">{t("top2")}<InfoTip text={t("top2Tip")} /></span></th>
+                      <th><span className="inline-flex items-center">{t("mkt")}<InfoTip text={t("mktTip")} /></span></th>
+                      <th><span className="inline-flex items-center">{t("cold")}<InfoTip text={t("coldTip")} /></span></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {prediction.horses.map((h) => (
+                      <tr key={h.horse_no}>
+                        <td><span className="saddlecloth">{h.horse_no}</span></td>
+                        <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
+                        <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
+                        <td className="tabular-nums">{h.draw}</td>
+                        <td className="tabular-nums">{h.weight}</td>
+                        <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                        <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
+                        <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
+                        <td>
+                          <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
+                            {h.cold_score.toFixed(1)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="space-y-3 md:hidden">
+              {prediction.horses.map((h) => (
+                <CollapsibleCard
+                  key={h.horse_no}
+                  header={
+                    <span className="flex items-center gap-2">
+                      <span className="flex min-w-0 flex-1 items-center gap-2 font-semibold">
+                        <span className="saddlecloth">{h.horse_no}</span>
+                        <span className="truncate">{pickName(lang, h.horse_name, h.horse_name_cn)}</span>
+                      </span>
+                      <span className="shrink-0 font-medium tabular-nums text-accent">
+                        {(h.fund_prob * 100).toFixed(1)}%
+                      </span>
+                    </span>
+                  }
+                >
+                  <div className="mb-3 text-xs text-muted">
+                    {t("jockey")}：{pickName(lang, h.jockey, h.jockey_cn)}
+                  </div>
+                  <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+                    <div><div className="text-muted">{t("draw")}</div><div className="mt-0.5 font-medium tabular-nums">{h.draw}</div></div>
+                    <div><div className="text-muted">{t("weight")}</div><div className="mt-0.5 font-medium tabular-nums">{h.weight}</div></div>
+                    <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
+                    <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
+                    <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>
+                    <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>
+                  </div>
+                </CollapsibleCard>
+              ))}
             </div>
           </div>
 
