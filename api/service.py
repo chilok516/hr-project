@@ -211,6 +211,10 @@ class PredictionService:
         if self.predictor is None or self.raw_df is None:
             return {"error": "service not loaded"}
 
+        cache_key = f"{date_str}:{venue}:{race_no}"
+        if cache_key in self._live_cache:
+            return self._live_cache[cache_key]
+
         card = self._get_race_card(date_str, venue, race_no)
         runners = card.get("runners", [])
         if not runners:
@@ -234,6 +238,7 @@ class PredictionService:
             "race_class": str(race_info.get("race_class", "")),
             "going": str(race_info.get("going", "")),
         }
+        self._live_cache[cache_key] = result
         return result
 
     def compute_live_prediction(self, runners, race_info: dict) -> dict:
