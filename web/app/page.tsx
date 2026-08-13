@@ -86,91 +86,90 @@ export default function Live() {
     return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
 
-  const cLabel = (v: string) => classLabel(v, lang);
-
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        {t("live")}
-      </h1>
-      <p className="text-xs mb-3" style={{ color: "#666" }}>
-        {t("liveSub")}
-      </p>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("live")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("liveSub")}</p>
+      </div>
+
       {note && (
-        <p className="text-xs mb-3 yellow">
-          {lang === "zh" ? t("seasonNote") : note}
-        </p>
+        <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>ℹ️</span>
+          <span>{lang === "zh" ? t("seasonNote") : note}</span>
+        </div>
       )}
 
-      <div className="flex flex-wrap gap-3 mb-5">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-        />
-        <button
-          className="px-3 py-1 rounded border text-sm"
-          style={{ borderColor: "var(--border)", color: "#bbb" }}
-          onClick={() => { setDate(todayStr()); }}
-        >
+      <div className="card flex flex-wrap items-center gap-3">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
+        <button className="btn" onClick={() => setDate(todayStr())}>
           {t("today")}
         </button>
       </div>
 
       {races.length === 0 ? (
-        <div className="card" style={{ textAlign: "center", padding: 40 }}>
-          <p style={{ color: "#888" }}>{tf("noRaces", date)}</p>
-          <p className="text-xs mt-2" style={{ color: "#666" }}>
+        <div className="card text-center py-12">
+          <p className="text-muted">{tf("noRaces", date)}</p>
+          <p className="mt-2 text-sm text-gray-400">
             {lang === "zh" ? t("seasonNote") : note}
           </p>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-3 mb-5">
+        <div className="flex flex-wrap gap-2">
           {races.map((r) => (
             <button
               key={`${r.venue}-${r.race_no}`}
               onClick={() => setSelected(r)}
-              className="text-left px-4 py-3 rounded border"
-              style={{
-                background: selected === r ? "var(--accent)" : "transparent",
-                color: selected === r ? "#000" : "#ccc",
-                borderColor: selected === r ? "var(--accent)" : "var(--border)",
-              }}
+              className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                selected === r
+                  ? "border-accent bg-accent text-white"
+                  : "border-border bg-white text-foreground hover:border-gray-300"
+              }`}
             >
-              <div className="font-bold text-sm">{lang === "zh" ? "第" : "R"}{r.race_no} · {raceTime(r.venue, r.race_no)}</div>
-              <div className="text-xs mt-1">{venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)}</div>
-              <div className="text-xs">{classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}</div>
+              <div className="text-sm font-bold">
+                {lang === "zh" ? "第" : "R"}{r.race_no} · {raceTime(r.venue, r.race_no)}
+              </div>
+              <div className={`mt-1 text-xs ${selected === r ? "text-white/80" : "text-muted"}`}>
+                {venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)}
+              </div>
+              <div className={`text-xs ${selected === r ? "text-white/80" : "text-muted"}`}>
+                {classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}
+              </div>
             </button>
           ))}
         </div>
       )}
 
-      {error && <p className="red mb-3">{error}</p>}
-      {loading && !prediction && <p style={{ color: "#888" }}>{t("loading")}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      {loading && !prediction && <p className="text-muted">{t("loading")}</p>}
 
       {selected && prediction && (
         <div className="space-y-5">
           <div className="card flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-sm font-semibold">
+              <h2 className="font-semibold">
                 {lang === "zh" ? "第" : "R"}{selected.race_no} · {classLabel(prediction.race_info.race_class, lang)} · {distLabel(prediction.race_info.distance, lang)} · {goingLabel(prediction.race_info.going, lang)}
               </h2>
-              <p className="text-xs mt-1" style={{ color: "#666" }}>
+              <p className="mt-1 text-sm text-muted">
                 {prediction.race_info.date} · {venueLabel(prediction.race_info.venue, lang)} · {raceTime(selected.venue, selected.race_no)}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-xs" style={{ color: "#888" }}>{t("countdown")}</div>
-              <div className="text-2xl font-bold green">{countdown(selected.venue, selected.race_no)}</div>
+              <div className="text-xs uppercase tracking-wide text-muted">{t("countdown")}</div>
+              <div className="font-mono text-3xl font-bold tabular-nums text-accent">
+                {countdown(selected.venue, selected.race_no)}
+              </div>
             </div>
           </div>
 
           <div className="card">
-            <h2 className="text-sm font-semibold mb-3" style={{ color: "#888" }}>
-              {t("horseProbs")}
-            </h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted">{t("horseProbs")}</h2>
             <div className="table-scroll">
-              <table className="data">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th>
@@ -181,15 +180,19 @@ export default function Live() {
                 <tbody>
                   {prediction.horses.map((h) => (
                     <tr key={h.horse_no}>
-                      <td>{h.horse_no}</td>
+                      <td><span className="saddlecloth">{h.horse_no}</span></td>
                       <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                      <td style={{ color: "#aaa" }}>{pickName(lang, h.jockey, h.jockey_cn)}</td>
-                      <td>{h.draw}</td>
-                      <td>{h.weight}</td>
-                      <td className="green">{(h.fund_prob * 100).toFixed(1)}%</td>
-                      <td>{(h.top2_prob * 100).toFixed(1)}%</td>
-                      <td>{(h.market_prob * 100).toFixed(1)}%</td>
-                      <td className={h.cold_score >= 4 ? "yellow" : ""}>{h.cold_score.toFixed(1)}</td>
+                      <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
+                      <td className="tabular-nums">{h.draw}</td>
+                      <td className="tabular-nums">{h.weight}</td>
+                      <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
+                      <td>
+                        <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
+                          {h.cold_score.toFixed(1)}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -198,15 +201,13 @@ export default function Live() {
           </div>
 
           <div className="card">
-            <h2 className="text-sm font-semibold mb-3" style={{ color: "#888" }}>
-              {t("combos")}
-            </h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted">{t("combos")}</h2>
             {prediction.combos.length === 0 ? (
-              <p style={{ color: "#888" }}>{t("noCombos")}</p>
+              <p className="text-muted">{t("noCombos")}</p>
             ) : (
               <>
                 <div className="table-scroll">
-                  <table className="data">
+                  <table className="data-table">
                     <thead>
                       <tr>
                         <th>{t("combo")}</th><th>{t("prob")}</th><th>{t("estDiv")}</th><th>{t("ev")}</th>
@@ -217,21 +218,32 @@ export default function Live() {
                       {prediction.combos.map((c, i) => (
                         <tr key={i}>
                           <td className="font-semibold">
-                            {c.horse_i_no}.{pickName(lang, c.horse_i, c.horse_i_cn)} + {c.horse_j_no}.{pickName(lang, c.horse_j, c.horse_j_cn)}
+                            <span className="saddlecloth mr-2">{c.horse_i_no}</span>
+                            {pickName(lang, c.horse_i, c.horse_i_cn)}
+                            <span className="mx-1 text-muted">+</span>
+                            <span className="saddlecloth mr-2">{c.horse_j_no}</span>
+                            {pickName(lang, c.horse_j, c.horse_j_cn)}
                           </td>
-                          <td>{(c.prob * 100).toFixed(2)}%</td>
-                          <td>${c.est_dividend}</td>
-                          <td className={c.ev > 0.4 ? "green" : "red"}>{c.ev.toFixed(3)}</td>
-                          <td>{c.cold_score.toFixed(1)}</td>
-                          <td>{c.multiplier}×</td>
-                          <td className="green font-bold">${c.suggested_stake}</td>
+                          <td className="tabular-nums">{(c.prob * 100).toFixed(2)}%</td>
+                          <td className="tabular-nums">${c.est_dividend}</td>
+                          <td>
+                            <span className={`badge ${c.ev > 0.4 ? "badge-green" : "badge-red"}`}>
+                              {c.ev.toFixed(3)}
+                            </span>
+                          </td>
+                          <td className="tabular-nums">{c.cold_score.toFixed(1)}</td>
+                          <td className="tabular-nums">{c.multiplier}×</td>
+                          <td className="font-semibold tabular-nums text-accent">${c.suggested_stake}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-                <div className="flex flex-wrap gap-4 mt-3 text-xs" style={{ color: "#aaa" }}>
-                  <span>{t("totalStake")}: <span className="green font-bold">${prediction.suggested_total_stake}</span></span>
+                <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted">
+                  <span>
+                    {t("totalStake")}:{" "}
+                    <span className="font-semibold text-accent">${prediction.suggested_total_stake}</span>
+                  </span>
                   <span>⚠️ {tf("riskCap", prediction.risk_caps.max_per_race, prediction.risk_caps.max_per_day)}</span>
                 </div>
               </>

@@ -18,10 +18,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="zh-HK">
-      <body>
+      <body className="font-sans">
         <LanguageProvider>
           <Header />
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">{children}</main>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">{children}</main>
         </LanguageProvider>
       </body>
     </html>

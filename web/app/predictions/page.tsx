@@ -50,16 +50,14 @@ export default function Predictions() {
   const venueRaces = races.filter((r) => r.venue === venue);
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        {t("predictions")}
-      </h1>
-      <p className="text-xs mb-5" style={{ color: "#666" }}>
-        {t("selectRace")}
-      </p>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("predictions")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("selectRace")}</p>
+      </div>
 
-      <div className="flex flex-wrap gap-3 mb-5">
-        <select value={date} onChange={(e) => setDate(e.target.value)}>
+      <div className="card flex flex-wrap items-center gap-3">
+        <select value={date} onChange={(e) => setDate(e.target.value)} className="select">
           {dates.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}
@@ -70,13 +68,13 @@ export default function Predictions() {
           setVenue(v);
           const first = races.find((r) => r.venue === v);
           setRaceNo(first ? first.race_no : 1);
-        }}>
+        }} className="select">
           {venues.map((v) => (
             <option key={v} value={v}>{venueLabel(v, lang)}</option>
           ))}
         </select>
 
-        <select value={raceNo} onChange={(e) => setRaceNo(Number(e.target.value))}>
+        <select value={raceNo} onChange={(e) => setRaceNo(Number(e.target.value))} className="select">
           {venueRaces.map((r) => (
             <option key={r.race_no} value={r.race_no}>
               {lang === "zh" ? "第" : "R"}{r.race_no} — {classLabel(r.race_class, lang)} · {distLabel(r.distance, lang)}
@@ -85,77 +83,93 @@ export default function Predictions() {
         </select>
       </div>
 
-      {loading && <p style={{ color: "#888" }}>{t("loading")}</p>}
-      {error && <p className="red">{error}</p>}
+      {loading && <p className="text-muted">{t("loading")}</p>}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       {prediction && (
         <div className="space-y-5">
           <div className="card">
-            <h2 className="text-sm font-semibold mb-1">
+            <h2 className="font-semibold">
               {lang === "zh" ? "第" : "Race"} {prediction.race_info.race_no} · {classLabel(prediction.race_info.race_class, lang)} ·{" "}
               {distLabel(prediction.race_info.distance, lang)} · {goingLabel(prediction.race_info.going, lang)}
             </h2>
-            <p className="text-xs" style={{ color: "#666" }}>
+            <p className="mt-1 text-sm text-muted">
               {prediction.race_info.date} · {venueLabel(prediction.race_info.venue, lang)}
             </p>
           </div>
 
           <div className="card">
-            <h2 className="text-sm font-semibold mb-3" style={{ color: "#888" }}>
-              {t("horseProbs")}
-            </h2>
+            <h2 className="mb-3 text-sm font-semibold text-muted">{t("horseProbs")}</h2>
             <div className="table-scroll">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th><th>{t("odds")}</th>
-                  <th>{t("fund")}</th><th>{t("top2")}</th><th>{t("mkt")}</th><th>{t("place")}</th><th>{t("actual")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {prediction.horses.map((h) => (
-                  <tr key={h.horse_no} className={h.finish_pos === 1 ? "win" : ""}>
-                    <td>{h.horse_no}</td>
-                    <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                    <td style={{ color: "#aaa" }}>{pickName(lang, h.jockey, h.jockey_cn)}</td>
-                    <td>{h.win_odds.toFixed(1)}</td>
-                    <td className="green">{(h.fund_prob * 100).toFixed(1)}%</td>
-                    <td>{(h.top2_prob * 100).toFixed(1)}%</td>
-                    <td>{(h.market_prob * 100).toFixed(1)}%</td>
-                    <td>{(h.place_prob * 100).toFixed(1)}%</td>
-                    <td className={h.finish_pos === 1 ? "green font-bold" : ""}>{h.finish_pos}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
-          <div className="card">
-            <h2 className="text-sm font-semibold mb-3" style={{ color: "#888" }}>
-              {lang === "zh" ? "連贏組合（前三精選）" : "Quinella Combos (top 3 anchors)"}
-            </h2>
-            {prediction.combos.length === 0 ? (
-              <p style={{ color: "#888" }}>{lang === "zh" ? "此場沒有組合通過期望值篩選。" : "No combos passed the EV filter for this race."}</p>
-            ) : (
-              <div className="table-scroll">
-              <table className="data">
+              <table className="data-table">
                 <thead>
-                  <tr><th>{t("combo")}</th><th>{t("prob")}</th><th>{t("estDiv")}</th><th>{t("ev")}</th></tr>
+                  <tr>
+                    <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th><th>{t("odds")}</th>
+                    <th>{t("fund")}</th><th>{t("top2")}</th><th>{t("mkt")}</th><th>{t("place")}</th><th>{t("actual")}</th>
+                  </tr>
                 </thead>
                 <tbody>
-                  {prediction.combos.map((c, i) => (
-                    <tr key={i}>
-                      <td className="font-semibold">
-                        {c.horse_i_no}.{pickName(lang, c.horse_i, c.horse_i_cn)} + {c.horse_j_no}.{pickName(lang, c.horse_j, c.horse_j_cn)}
+                  {prediction.horses.map((h) => (
+                    <tr key={h.horse_no} className={h.finish_pos === 1 ? "win" : ""}>
+                      <td><span className="saddlecloth">{h.horse_no}</span></td>
+                      <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
+                      <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
+                      <td className="tabular-nums">{h.win_odds.toFixed(1)}</td>
+                      <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
+                      <td className="tabular-nums">{(h.place_prob * 100).toFixed(1)}%</td>
+                      <td>
+                        {h.finish_pos === 1 ? (
+                          <span className="badge badge-green">1</span>
+                        ) : (
+                          <span className="tabular-nums">{h.finish_pos}</span>
+                        )}
                       </td>
-                      <td>{(c.prob * 100).toFixed(2)}%</td>
-                      <td>${c.est_dividend}</td>
-                      <td className={c.ev > 0.4 ? "green" : "red"}>{c.ev.toFixed(3)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="card">
+            <h2 className="mb-3 text-sm font-semibold text-muted">
+              {lang === "zh" ? "連贏組合（前三精選）" : "Quinella Combos (top 3 anchors)"}
+            </h2>
+            {prediction.combos.length === 0 ? (
+              <p className="text-muted">{lang === "zh" ? "此場沒有組合通過期望值篩選。" : "No combos passed the EV filter for this race."}</p>
+            ) : (
+              <div className="table-scroll">
+                <table className="data-table">
+                  <thead>
+                    <tr><th>{t("combo")}</th><th>{t("prob")}</th><th>{t("estDiv")}</th><th>{t("ev")}</th></tr>
+                  </thead>
+                  <tbody>
+                    {prediction.combos.map((c, i) => (
+                      <tr key={i}>
+                        <td className="font-semibold">
+                          <span className="saddlecloth mr-2">{c.horse_i_no}</span>
+                          {pickName(lang, c.horse_i, c.horse_i_cn)}
+                          <span className="mx-1 text-muted">+</span>
+                          <span className="saddlecloth mr-2">{c.horse_j_no}</span>
+                          {pickName(lang, c.horse_j, c.horse_j_cn)}
+                        </td>
+                        <td className="tabular-nums">{(c.prob * 100).toFixed(2)}%</td>
+                        <td className="tabular-nums">${c.est_dividend}</td>
+                        <td>
+                          <span className={`badge ${c.ev > 0.4 ? "badge-green" : "badge-red"}`}>
+                            {c.ev.toFixed(3)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

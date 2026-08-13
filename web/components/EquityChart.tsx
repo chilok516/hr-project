@@ -19,22 +19,22 @@ export default function EquityChart({ data }: { data: number[] }) {
   return (
     <ResponsiveContainer width="100%" height={280}>
       <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a2a" />
-        <XAxis dataKey="i" tick={{ fill: "#666", fontSize: 11 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+        <XAxis dataKey="i" tick={{ fill: "#6b7280", fontSize: 11 }} />
         <YAxis
-          tick={{ fill: "#666", fontSize: 11 }}
+          tick={{ fill: "#6b7280", fontSize: 11 }}
           tickFormatter={(v) => `$${v}k`}
         />
         <Tooltip
-          contentStyle={{ background: "#141420", border: "1px solid #2a2a3a" }}
-          labelStyle={{ color: "#888" }}
+          contentStyle={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8 }}
+          labelStyle={{ color: "#6b7280" }}
           formatter={(v) => [`$${(Number(v) * 1000).toLocaleString()}`, "Equity"]}
         />
         <Line
           type="monotone"
           dataKey="value"
-          stroke="#00d4aa"
-          strokeWidth={1.5}
+          stroke="#059669"
+          strokeWidth={2}
           dot={false}
         />
       </LineChart>

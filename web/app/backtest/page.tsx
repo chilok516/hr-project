@@ -37,28 +37,55 @@ export default function Backtest() {
   const wins = bets.filter((b) => b.result === "WIN").length;
   const pnl = bets.reduce((s, b) => s + b.profit, 0);
   const staked = bets.reduce((s, b) => s + b.stake, 0);
+  const roi = staked ? (pnl / staked) * 100 : 0;
 
   function toggleSort(col: string) {
     if (sortCol === col) setSortDir(sortDir === "asc" ? "desc" : "asc");
     else { setSortCol(col); setSortDir("asc"); }
   }
 
-  return (
-    <div>
-      <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        {t("backtestTitle")}
-      </h1>
-      <p className="text-xs mb-5" style={{ color: "#666" }}>
-        {total.toLocaleString()} {lang === "zh" ? "注 · 顯示" : "total bets · showing"} {offset + 1}–{Math.min(offset + limit, total)}
-      </p>
+  const stats: { label: string; value: string; tone?: "green" | "red"; sub?: string }[] = [
+    { label: t("page"), value: bets.length.toLocaleString(), sub: lang === "zh" ? "注" : "bets" },
+    {
+      label: t("wins"),
+      value: `${wins}`,
+      sub: bets.length ? `${(wins / bets.length * 100).toFixed(1)}%` : "—",
+      tone: "green",
+    },
+    { label: t("profit"), value: `${pnl > 0 ? "+" : ""}$${pnl.toLocaleString()}`, tone: pnl > 0 ? "green" : "red" },
+    { label: "ROI", value: `${roi > 0 ? "+" : ""}${roi.toFixed(1)}%`, tone: roi > 0 ? "green" : "red" },
+  ];
 
-      <div className="flex flex-wrap gap-3 mb-4">
-        <select value={result} onChange={(e) => { setResult(e.target.value); setOffset(0); }}>
+  return (
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("backtestTitle")}</h1>
+        <p className="mt-1 text-sm text-muted">
+          {total.toLocaleString()} {lang === "zh" ? "注 · 顯示" : "total bets · showing"} {offset + 1}–{Math.min(offset + limit, total)}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="card p-4">
+            <div className="text-xs uppercase tracking-wide text-muted">{s.label}</div>
+            <div className={`mt-1 text-2xl font-bold tabular-nums ${
+              s.tone === "green" ? "text-accent" : s.tone === "red" ? "text-danger" : "text-foreground"
+            }`}>
+              {s.value}
+            </div>
+            {s.sub && <div className="text-xs text-muted">{s.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      <div className="card flex flex-wrap items-center gap-3">
+        <select value={result} onChange={(e) => { setResult(e.target.value); setOffset(0); }} className="select">
           <option value="all">{t("all")}</option>
           <option value="WIN">{t("wins")}</option>
           <option value="LOSS">{t("losses")}</option>
         </select>
-        <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }}>
+        <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }} className="select">
           <option value="all">{t("venues")}</option>
           <option value="ST">{venueLabel("ST", lang)}</option>
           <option value="HV">{venueLabel("HV", lang)}</option>
@@ -67,86 +94,84 @@ export default function Backtest() {
           placeholder={t("searchHorse")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          className="input"
         />
         <input
           type="number"
           placeholder={t("minDiv")}
           value={minDiv}
           onChange={(e) => setMinDiv(e.target.value)}
-          style={{ width: 120 }}
+          className="input w-28"
         />
       </div>
 
-      <div className="flex flex-wrap gap-4 text-xs mb-3" style={{ color: "#aaa" }}>
-        <span>{t("page")}: <span className="green">{bets.length}</span></span>
-        <span>{t("wins")}: <span className="green">{wins}</span> ({bets.length ? (wins / bets.length * 100).toFixed(1) : 0}%)</span>
-        <span>{t("profit")}: <span className={pnl > 0 ? "green" : "red"}>${pnl.toLocaleString()}</span></span>
-        <span>ROI: <span className={pnl > 0 ? "green" : "red"}>{staked ? (pnl / staked * 100).toFixed(1) : 0}%</span></span>
+      <div className="card p-0">
+        <div className="table-scroll">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th onClick={() => toggleSort("date")} className="cursor-pointer select-none">{t("date")}</th>
+                <th onClick={() => toggleSort("venue")} className="cursor-pointer select-none">V</th>
+                <th onClick={() => toggleSort("race_no")} className="cursor-pointer select-none">R#</th>
+                <th>{t("combo")}</th>
+                <th onClick={() => toggleSort("prob")} className="cursor-pointer select-none">{t("prob")}</th>
+                <th onClick={() => toggleSort("est_div")} className="cursor-pointer select-none">{t("estDiv")}</th>
+                <th onClick={() => toggleSort("ev")} className="cursor-pointer select-none">{t("ev")}</th>
+                <th onClick={() => toggleSort("stake")} className="cursor-pointer select-none">{t("stake")}</th>
+                <th onClick={() => toggleSort("result")} className="cursor-pointer select-none">{t("result")}</th>
+                <th onClick={() => toggleSort("actual_div")} className="cursor-pointer select-none">{t("actual")}</th>
+                <th onClick={() => toggleSort("profit")} className="cursor-pointer select-none">{t("profit")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={11} className="text-muted">{t("loading")}</td></tr>
+              ) : (
+                sorted.map((b, i) => (
+                  <tr key={i} className={b.result === "WIN" ? "win" : ""}>
+                    <td className="tabular-nums">{b.date}</td>
+                    <td>{b.venue}</td>
+                    <td className="tabular-nums">{b.race_no}</td>
+                    <td className="font-semibold">
+                      <span className="saddlecloth mr-2">{b.horse_i_no}</span>
+                      {pickName(lang, b.horse_i, b.horse_i_cn)}
+                      <span className="mx-1 text-muted">+</span>
+                      <span className="saddlecloth mr-2">{b.horse_j_no}</span>
+                      {pickName(lang, b.horse_j, b.horse_j_cn)}
+                    </td>
+                    <td className="tabular-nums">{(b.prob * 100).toFixed(2)}%</td>
+                    <td className="tabular-nums">${b.est_div}</td>
+                    <td className="tabular-nums">{b.ev.toFixed(3)}</td>
+                    <td className="tabular-nums">${b.stake}</td>
+                    <td>
+                      <span className={`badge ${b.result === "WIN" ? "badge-green" : "badge-red"}`}>
+                        {b.result === "WIN" ? t("wins") : t("losses")}
+                      </span>
+                    </td>
+                    <td className="tabular-nums">{b.actual_div > 0 ? "$" + b.actual_div : "—"}</td>
+                    <td className={`font-semibold tabular-nums ${b.profit > 0 ? "text-accent" : "text-danger"}`}>
+                      {b.profit > 0 ? "+" : ""}${b.profit.toLocaleString()}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      <div className="card table-scroll" style={{ padding: 0 }}>
-        <table className="data">
-          <thead>
-            <tr>
-              <th onClick={() => toggleSort("date")}>{t("date")}</th>
-              <th onClick={() => toggleSort("venue")}>V</th>
-              <th onClick={() => toggleSort("race_no")}>R#</th>
-              <th>{t("combo")}</th>
-              <th onClick={() => toggleSort("prob")}>{t("prob")}</th>
-              <th onClick={() => toggleSort("est_div")}>{t("estDiv")}</th>
-              <th onClick={() => toggleSort("ev")}>{t("ev")}</th>
-              <th onClick={() => toggleSort("stake")}>{t("stake")}</th>
-              <th onClick={() => toggleSort("result")}>{t("result")}</th>
-              <th onClick={() => toggleSort("actual_div")}>{t("actual")}</th>
-              <th onClick={() => toggleSort("profit")}>{t("profit")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={11} style={{ color: "#888" }}>{t("loading")}</td></tr>
-            ) : (
-              sorted.map((b, i) => (
-                <tr key={i} className={b.result === "WIN" ? "win" : ""}>
-                  <td>{b.date}</td>
-                  <td>{b.venue}</td>
-                  <td>{b.race_no}</td>
-                  <td className="font-semibold">
-                    {b.horse_i_no}.{pickName(lang, b.horse_i, b.horse_i_cn)} + {b.horse_j_no}.{pickName(lang, b.horse_j, b.horse_j_cn)}
-                  </td>
-                  <td>{(b.prob * 100).toFixed(2)}%</td>
-                  <td>${b.est_div}</td>
-                  <td>{b.ev.toFixed(3)}</td>
-                  <td>${b.stake}</td>
-                  <td>
-                    <span style={{ color: b.result === "WIN" ? "var(--accent)" : "var(--red)", fontWeight: "bold" }}>
-                      {b.result === "WIN" ? t("wins") : t("losses")}
-                    </span>
-                  </td>
-                  <td>{b.actual_div > 0 ? "$" + b.actual_div : "—"}</td>
-                  <td className={b.profit > 0 ? "green" : "red"}>
-                    {b.profit > 0 ? "+" : ""}${b.profit.toLocaleString()}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex gap-3 mt-4">
+      <div className="flex gap-3">
         <button
           onClick={() => setOffset(Math.max(0, offset - limit))}
           disabled={offset === 0}
-          style={{ opacity: offset === 0 ? 0.4 : 1 }}
-          className="px-4 py-2 rounded border"
+          className="btn"
         >
           {t("prev")}
         </button>
         <button
           onClick={() => setOffset(offset + limit)}
           disabled={offset + limit >= total}
-          style={{ opacity: offset + limit >= total ? 0.4 : 1 }}
-          className="px-4 py-2 rounded border"
+          className="btn"
         >
           {t("next")}
         </button>

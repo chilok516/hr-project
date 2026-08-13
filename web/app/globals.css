@@ -2,81 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #0a0a10;
-  --foreground: #e0e0e0;
-  --card: #141420;
-  --border: #2a2a3a;
-  --accent: #00d4aa;
-  --red: #ff4757;
-  --yellow: #ffa502;
-}
-
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  @apply bg-background text-foreground antialiased;
   font-size: 14px;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+@layer components {
+  .card {
+    @apply rounded-2xl border border-border bg-card p-5 shadow-sm;
+  }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
-}
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 disabled:opacity-40;
+  }
 
-.table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
+  .btn-primary {
+    @apply border-transparent bg-accent text-white hover:bg-accent-strong;
+  }
 
-.green { color: var(--accent); }
-.red { color: var(--red); }
-.yellow { color: var(--yellow); }
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold;
+  }
 
-table.data {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-  min-width: 480px;
-}
-table.data th {
-  text-align: left;
-  color: #888;
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  white-space: nowrap;
-}
-table.data td {
-  padding: 5px 8px;
-  border-bottom: 1px solid #1a1a2a;
-  white-space: nowrap;
-}
-table.data tr:hover { background: #1a1a30; }
-table.data tr.win { background: #0a2a1a; }
-table.data tr.win:hover { background: #0a3a2a; }
+  .badge-green {
+    @apply bg-emerald-50 text-emerald-700;
+  }
 
-input, select {
-  background: #1a1a2a;
-  border: 1px solid var(--border);
-  color: var(--foreground);
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: inherit;
-  max-width: 100%;
-}
+  .badge-red {
+    @apply bg-red-50 text-red-700;
+  }
 
-/* Responsive */
-@media (max-width: 640px) {
-  body { font-size: 13px; }
-  .card { padding: 12px; }
-  input, select { font-size: 16px; padding: 8px 10px; width: 100%; }
+  .badge-amber {
+    @apply bg-amber-50 text-amber-700;
+  }
+
+  .badge-gray {
+    @apply bg-gray-100 text-gray-600;
+  }
+
+  .input,
+  .select {
+    @apply rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-accent/30;
+  }
+
+  .saddlecloth {
+    @apply inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-bold text-white tabular-nums;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    @apply w-full border-collapse text-sm;
+  }
+  .data-table th {
+    @apply whitespace-nowrap border-b border-border px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .data-table td {
+    @apply whitespace-nowrap border-b border-gray-100 px-3 py-2.5;
+  }
+  .data-table tbody tr {
+    @apply transition-colors;
+  }
+  .data-table tbody tr:hover {
+    @apply bg-gray-50;
+  }
+  .data-table tbody tr.win {
+    @apply bg-emerald-50/70;
+  }
 }

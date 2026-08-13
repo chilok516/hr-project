@@ -27,26 +27,22 @@ export default function Models() {
   const maxImp = features.length ? features[0].importance : 1;
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-1" style={{ color: "var(--accent)" }}>
-        {t("modelsTitle")}
-      </h1>
-      <p className="text-xs mb-5" style={{ color: "#666" }}>
-        {t("modelsSub")}
-      </p>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("modelsTitle")}</h1>
+        <p className="mt-1 text-sm text-muted">{t("modelsSub")}</p>
+      </div>
 
-      <div className="flex flex-wrap gap-3 mb-5">
+      <div className="card flex flex-wrap gap-2">
         {modelOptions.map((m) => (
           <button
             key={m.value}
             onClick={() => setModel(m.value)}
-            className="px-4 py-2 rounded border text-sm"
-            style={{
-              background: model === m.value ? "var(--accent)" : "transparent",
-              color: model === m.value ? "#000" : "#ccc",
-              borderColor: model === m.value ? "var(--accent)" : "var(--border)",
-              fontWeight: model === m.value ? "bold" : "normal",
-            }}
+            className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
+              model === m.value
+                ? "border-accent bg-accent text-white"
+                : "border-border bg-white text-foreground hover:border-gray-300"
+            }`}
           >
             {lang === "zh" ? m.label_zh : m.label_en}
           </button>
@@ -54,35 +50,31 @@ export default function Models() {
       </div>
 
       {loading ? (
-        <p style={{ color: "#888" }}>{t("loading")}</p>
+        <p className="text-muted">{t("loading")}</p>
       ) : (
         <div className="card">
           <div className="table-scroll">
-          <table className="data">
-            <thead>
-              <tr><th>{t("feature")}</th><th>{t("importance")}</th><th></th></tr>
-            </thead>
-            <tbody>
-              {features.map((f) => (
-                <tr key={f.feature}>
-                  <td>{f.feature}</td>
-                  <td>{f.importance.toFixed(0)}</td>
-                  <td style={{ width: "100%" }}>
-                    <div style={{ width: "100%", background: "#1a1a2a", borderRadius: 3, height: 8 }}>
-                      <div
-                        style={{
-                          width: `${(f.importance / maxImp) * 100}%`,
-                          background: "var(--accent)",
-                          height: 8,
-                          borderRadius: 3,
-                        }}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            <table className="data-table">
+              <thead>
+                <tr><th>{t("feature")}</th><th>{t("importance")}</th><th></th></tr>
+              </thead>
+              <tbody>
+                {features.map((f) => (
+                  <tr key={f.feature}>
+                    <td className="font-medium">{f.feature}</td>
+                    <td className="tabular-nums">{f.importance.toFixed(0)}</td>
+                    <td className="w-full">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                        <div
+                          className="h-2 rounded-full bg-accent"
+                          style={{ width: `${(f.importance / maxImp) * 100}%` }}
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
