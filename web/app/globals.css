@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0a0a10;
+  --foreground: #e0e0e0;
+  --card: #141420;
+  --border: #2a2a3a;
+  --accent: #00d4aa;
+  --red: #ff4757;
+  --yellow: #ffa502;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.green { color: var(--accent); }
+.red { color: var(--red); }
+.yellow { color: var(--yellow); }
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+table.data th {
+  text-align: left;
+  color: #888;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  white-space: nowrap;
+}
+table.data td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #1a1a2a;
+  white-space: nowrap;
+}
+table.data tr:hover { background: #1a1a30; }
+table.data tr.win { background: #0a2a1a; }
+table.data tr.win:hover { background: #0a3a2a; }
+
+input, select {
+  background: #1a1a2a;
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: inherit;
+}

@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+notebooks/
+
+# Node
+node_modules/
+.next/
+*.log
+
+# Env
+.env
+*.env.local
+
+# OS
+.DS_Store
+
+# Data backups (don't commit)
+data/raw/*backup*.csv
+*.bak
