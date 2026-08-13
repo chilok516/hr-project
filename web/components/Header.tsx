@@ -26,7 +26,7 @@ export default function Header() {
           <span>HKJC Quinella</span>
         </Link>
 
-        <nav className="ml-4 flex items-center gap-1 sm:ml-6">
+        <nav className="ml-4 hidden items-center gap-1 sm:ml-6 md:flex">
           {navItems.map((item) => {
             const active =
               item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);

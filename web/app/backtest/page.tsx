@@ -79,13 +79,13 @@ export default function Backtest() {
         ))}
       </div>
 
-      <div className="card flex flex-wrap items-center gap-3">
-        <select value={result} onChange={(e) => { setResult(e.target.value); setOffset(0); }} className="select">
+      <div className="card flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <select value={result} onChange={(e) => { setResult(e.target.value); setOffset(0); }} className="select w-full sm:w-auto">
           <option value="all">{t("all")}</option>
           <option value="WIN">{t("wins")}</option>
           <option value="LOSS">{t("losses")}</option>
         </select>
-        <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }} className="select">
+        <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }} className="select w-full sm:w-auto">
           <option value="all">{t("venues")}</option>
           <option value="ST">{venueLabel("ST", lang)}</option>
           <option value="HV">{venueLabel("HV", lang)}</option>
@@ -94,18 +94,18 @@ export default function Backtest() {
           placeholder={t("searchHorse")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="input"
+          className="input w-full sm:w-auto"
         />
         <input
           type="number"
           placeholder={t("minDiv")}
           value={minDiv}
           onChange={(e) => setMinDiv(e.target.value)}
-          className="input w-28"
+          className="input w-full sm:w-28"
         />
       </div>
 
-      <div className="card p-0">
+      <div className="card hidden p-0 md:block">
         <div className="table-scroll">
           <table className="data-table">
             <thead>
@@ -158,6 +158,43 @@ export default function Backtest() {
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {loading ? (
+          <p className="text-muted">{t("loading")}</p>
+        ) : (
+          sorted.map((b, i) => (
+            <div
+              key={i}
+              className={`rounded-xl border bg-white p-3 ${
+                b.result === "WIN" ? "border-accent/40 bg-emerald-50/50" : "border-border"
+              }`}
+            >
+              <div className="flex items-center justify-between text-xs text-muted">
+                <span>{b.date} · {b.venue} · {lang === "zh" ? "第" : "R"}{b.race_no}</span>
+                <span className={`badge ${b.result === "WIN" ? "badge-green" : "badge-red"}`}>
+                  {b.result === "WIN" ? t("wins") : t("losses")}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center gap-2 font-semibold">
+                <span className="saddlecloth">{b.horse_i_no}</span>
+                <span className="truncate">{pickName(lang, b.horse_i, b.horse_i_cn)}</span>
+                <span className="text-muted">+</span>
+                <span className="saddlecloth">{b.horse_j_no}</span>
+                <span className="truncate">{pickName(lang, b.horse_j, b.horse_j_cn)}</span>
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-y-2.5 text-xs">
+                <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(b.prob * 100).toFixed(2)}%</div></div>
+                <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${b.est_div}</div></div>
+                <div><div className="text-muted">{t("ev")}</div><div className="mt-0.5 font-medium tabular-nums">{b.ev.toFixed(3)}</div></div>
+                <div><div className="text-muted">{t("stake")}</div><div className="mt-0.5 font-medium tabular-nums">${b.stake}</div></div>
+                <div><div className="text-muted">{t("actual")}</div><div className="mt-0.5 font-medium tabular-nums">{b.actual_div > 0 ? "$" + b.actual_div : "—"}</div></div>
+                <div><div className="text-muted">{t("profit")}</div><div className={`mt-0.5 font-semibold tabular-nums ${b.profit > 0 ? "text-accent" : "text-danger"}`}>{b.profit > 0 ? "+" : ""}${b.profit.toLocaleString()}</div></div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <div className="flex gap-3">
