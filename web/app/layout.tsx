@@ -14,6 +14,7 @@ export const viewport: Viewport = {
 
 const navItems = [
   { href: "/", label: "Predictions" },
+  { href: "/live", label: "Live" },
   { href: "/backtest", label: "Backtest" },
   { href: "/models", label: "Models" },
 ];

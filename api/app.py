@@ -58,6 +58,29 @@ def predict(date: str, venue: str = "ST", race_no: int = 1):
     return result
 
 
+@app.get("/live/races")
+def live_races(date: str = Query(..., description="YYYY-MM-DD")):
+    races = service.list_live_races(date)
+    return {"races": races}
+
+
+@app.get("/live/predict")
+def live_predict(date: str, venue: str = "ST", race_no: int = 1):
+    result = service.live_predict(date, venue, race_no)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.get("/live/status")
+def live_status():
+    return {
+        "mode": "synthetic" if service.LIVE_SOURCE_DATE else "live",
+        "source_date": service.LIVE_SOURCE_DATE,
+        "season_note": "HK off-season (Jul-Sep). Synthetic race cards until Sept season start.",
+    }
+
+
 @app.get("/backtest/summary")
 def backtest_summary():
     return service.backtest_summary()

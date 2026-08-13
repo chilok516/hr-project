@@ -81,6 +81,52 @@ export interface FeatureImportance {
   importance: number;
 }
 
+export interface LiveRaceSummary {
+  venue: string;
+  race_no: number;
+  n_runners: number;
+  distance: number;
+  race_class: string;
+  going: string;
+  race_date: string;
+}
+
+export interface LiveHorse {
+  horse_no: number;
+  horse_name: string;
+  jockey: string;
+  trainer: string;
+  draw: number;
+  weight: number;
+  win_odds: number;
+  fund_prob: number;
+  top2_prob: number;
+  market_prob: number;
+  place_prob: number;
+  cold_score: number;
+}
+
+export interface LiveCombo {
+  horse_i: string;
+  horse_j: string;
+  horse_i_no: number;
+  horse_j_no: number;
+  prob: number;
+  est_dividend: number;
+  ev: number;
+  cold_score: number;
+  multiplier: number;
+  suggested_stake: number;
+}
+
+export interface LivePrediction {
+  race_info: RaceInfo;
+  horses: LiveHorse[];
+  combos: LiveCombo[];
+  suggested_total_stake: number;
+  risk_caps: { max_per_race: number; max_per_day: number };
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -105,4 +151,9 @@ export const api = {
       `/api/models/importance?model=${model}`,
     ),
   modelInfo: () => getJson<Record<string, unknown>>("/api/models/info"),
+  liveRaces: (date: string) =>
+    getJson<{ races: LiveRaceSummary[] }>(`/api/live/races?date=${date}`),
+  livePredict: (date: string, venue: string, race_no: number) =>
+    getJson<LivePrediction>(`/api/live/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
+  liveStatus: () => getJson<Record<string, unknown>>("/api/live/status"),
 };

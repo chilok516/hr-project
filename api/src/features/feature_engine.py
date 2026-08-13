@@ -37,7 +37,12 @@ class FeatureEngineer:
         self._add_target()
         self._cleanup()
         return self.df
-        return self.df
+
+    @staticmethod
+    def _append_pos(history, pos):
+        """Append finish_pos only if valid (skip live/NaN races)."""
+        if pos is not None and not pd.isna(pos):
+            history.append(pos)
 
     def _encode_categoricals(self):
         for col in ["venue", "going"]:
@@ -70,7 +75,7 @@ class FeatureEngineer:
                     "horse_last_pos": 0, "horse_last3_avg": 7.0, "horse_form_trend": 0.0,
                 })
 
-            horse_history[horse].append(row["finish_pos"])
+            self._append_pos(horse_history[horse], row["finish_pos"])
 
         stats_df = pd.DataFrame(horse_stats, index=self.df.index)
         for col in stats_df.columns:
@@ -90,7 +95,7 @@ class FeatureEngineer:
                 })
             else:
                 stats.append({"jockey_win_rate": 0.1, "jockey_top3_rate": 0.3, "jockey_runs": len(hist)})
-            jockey_hist[jockey].append(row["finish_pos"])
+            self._append_pos(jockey_hist[jockey], row["finish_pos"])
 
         stats_df = pd.DataFrame(stats, index=self.df.index)
         for col in stats_df.columns:
@@ -110,7 +115,7 @@ class FeatureEngineer:
                 })
             else:
                 stats.append({"trainer_win_rate": 0.1, "trainer_top3_rate": 0.3, "trainer_runs": len(hist)})
-            trainer_hist[trainer].append(row["finish_pos"])
+            self._append_pos(trainer_hist[trainer], row["finish_pos"])
 
         stats_df = pd.DataFrame(stats, index=self.df.index)
         for col in stats_df.columns:
@@ -142,8 +147,8 @@ class FeatureEngineer:
                 "horse_venue_runs": len(venue_hist),
             })
 
-            horse_dist_stats[horse][dist].append(row["finish_pos"])
-            horse_venue_stats[horse][venue].append(row["finish_pos"])
+            self._append_pos(horse_dist_stats[horse][dist], row["finish_pos"])
+            self._append_pos(horse_venue_stats[horse][venue], row["finish_pos"])
 
         for s_df in [pd.DataFrame(dist_stats), pd.DataFrame(venue_stats)]:
             for col in s_df.columns:
@@ -172,7 +177,7 @@ class FeatureEngineer:
                 "horse_wet_place_rate": sum(1 for p in wet_hist[-10:] if p <= 3) / max(len(wet_hist[-10:]), 1),
             })
 
-            horse_going_stats[horse]["dry" if not is_wet else "wet"].append(row["finish_pos"])
+            self._append_pos(horse_going_stats[horse]["dry" if not is_wet else "wet"], row["finish_pos"])
 
         stats_df = pd.DataFrame(going_stats, index=self.df.index)
         for col in stats_df.columns:
@@ -247,7 +252,7 @@ class FeatureEngineer:
                 stats.append({"jt_win_rate": sum(1 for p in hist if p == 1) / len(hist), "jt_runs": len(hist)})
             else:
                 stats.append({"jt_win_rate": 0.1, "jt_runs": len(hist)})
-            jt_combo[combo].append(row["finish_pos"])
+            self._append_pos(jt_combo[combo], row["finish_pos"])
 
         stats_df = pd.DataFrame(stats, index=self.df.index)
         for col in stats_df.columns:
