@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/predictions", label: "Predictions" },
+  { href: "/", label: "Predictions" },
   { href: "/backtest", label: "Backtest" },
   { href: "/models", label: "Models" },
 ];
@@ -21,7 +21,7 @@ export default function RootLayout({
       <body>
         <header className="border-b" style={{ borderColor: "var(--border)" }}>
           <div className="flex items-center gap-6 px-6 py-4 max-w-7xl mx-auto">
-            <Link href="/predictions" className="font-bold text-lg" style={{ color: "var(--accent)" }}>
+            <Link href="/" className="font-bold text-lg" style={{ color: "var(--accent)" }}>
               🏇 HKJC Quinella
             </Link>
             <nav className="flex gap-4 text-sm">
