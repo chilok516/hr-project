@@ -69,13 +69,13 @@ export default function Backtest() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="card p-4">
-            <div className="text-xs uppercase tracking-wide text-muted">{s.label}</div>
-            <div className={`mt-1 text-2xl font-bold tabular-nums ${
+            <div className="text-sm uppercase tracking-wide text-muted">{s.label}</div>
+            <div className={`mt-1 text-3xl font-bold tabular-nums ${
               s.tone === "green" ? "text-accent" : s.tone === "red" ? "text-danger" : "text-foreground"
             }`}>
               {s.value}
             </div>
-            {s.sub && <div className="text-xs text-muted">{s.sub}</div>}
+            {s.sub && <div className="text-sm text-muted">{s.sub}</div>}
           </div>
         ))}
       </div>
@@ -170,7 +170,7 @@ export default function Backtest() {
               key={i}
               header={
                 <span className="flex flex-col gap-1.5">
-                  <span className="flex items-center justify-between text-xs text-muted">
+                  <span className="flex items-center justify-between text-sm text-muted">
                     <span>{b.date} · {b.venue} · {lang === "zh" ? "第" : "R"}{b.race_no}</span>
                     <span className={`badge shrink-0 ${b.result === "WIN" ? "badge-green" : "badge-red"}`}>
                       {b.result === "WIN" ? t("wins") : t("losses")}
@@ -186,7 +186,7 @@ export default function Backtest() {
                 </span>
               }
             >
-              <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+              <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                 <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(b.prob * 100).toFixed(2)}%</div></div>
                 <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${b.est_div}</div></div>
                 <div><div className="text-muted">{t("ev")}</div><div className="mt-0.5 font-medium tabular-nums">{b.ev.toFixed(3)}</div></div>

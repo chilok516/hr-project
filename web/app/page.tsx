@@ -88,6 +88,8 @@ export default function Live() {
     return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }
 
+  const hasOdds = prediction ? prediction.horses.some((h) => h.win_odds > 0) : false;
+
   return (
     <div className="space-y-5">
       <div>
@@ -139,13 +141,13 @@ export default function Live() {
                 </span>
                 <span className="flex flex-col">
                   <span
-                    className={`font-mono text-[15px] font-bold leading-none tabular-nums ${
+                    className={`font-mono text-base font-bold leading-none tabular-nums ${
                       active ? "text-accent" : "text-foreground"
                     }`}
                   >
                     {raceTime(r.venue, r.race_no)}
                   </span>
-                  <span className={`mt-1 text-xs leading-tight ${active ? "text-accent/80" : "text-muted"}`}>
+                  <span className={`mt-1 text-sm leading-tight ${active ? "text-accent/80" : "text-muted"}`}>
                     {venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)} · {classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}
                   </span>
                 </span>
@@ -174,8 +176,8 @@ export default function Live() {
               </p>
             </div>
             <div className="text-right">
-              <div className="text-xs uppercase tracking-wide text-muted">{t("countdown")}</div>
-              <div className="font-mono text-3xl font-bold tabular-nums text-accent">
+              <div className="text-sm uppercase tracking-wide text-muted">{t("countdown")}</div>
+              <div className="font-mono text-4xl font-bold tabular-nums text-accent">
                 {countdown(selected.venue, selected.race_no)}
               </div>
             </div>
@@ -193,8 +195,12 @@ export default function Live() {
                       <th><span className="inline-flex items-center">{t("weight")}<InfoTip text={t("weightTip")} /></span></th>
                       <th><span className="inline-flex items-center">{t("fund")}<InfoTip text={t("fundTip")} /></span></th>
                       <th><span className="inline-flex items-center">{t("top2")}<InfoTip text={t("top2Tip")} /></span></th>
-                      <th><span className="inline-flex items-center">{t("mkt")}<InfoTip text={t("mktTip")} /></span></th>
-                      <th><span className="inline-flex items-center">{t("cold")}<InfoTip text={t("coldTip")} /></span></th>
+                      {hasOdds && (
+                        <th><span className="inline-flex items-center">{t("mkt")}<InfoTip text={t("mktTip")} /></span></th>
+                      )}
+                      {hasOdds && (
+                        <th><span className="inline-flex items-center">{t("cold")}<InfoTip text={t("coldTip")} /></span></th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -207,12 +213,14 @@ export default function Live() {
                         <td className="tabular-nums">{h.weight}</td>
                         <td className="font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
                         <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>
-                        <td>
-                          <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
-                            {h.cold_score.toFixed(1)}
-                          </span>
-                        </td>
+                        {hasOdds && <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>}
+                        {hasOdds && (
+                          <td>
+                            <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
+                              {h.cold_score.toFixed(1)}
+                            </span>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -235,16 +243,16 @@ export default function Live() {
                     </span>
                   }
                 >
-                  <div className="mb-3 text-xs text-muted">
+                  <div className="mb-3 text-sm text-muted">
                     {t("jockey")}：{pickName(lang, h.jockey, h.jockey_cn)}
                   </div>
-                  <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+                  <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                     <div><div className="text-muted">{t("draw")}</div><div className="mt-0.5 font-medium tabular-nums">{h.draw}</div></div>
                     <div><div className="text-muted">{t("weight")}</div><div className="mt-0.5 font-medium tabular-nums">{h.weight}</div></div>
                     <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>
-                    <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>
+                    {hasOdds && <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>}
+                    {hasOdds && <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>}
                   </div>
                 </CollapsibleCard>
               ))}
@@ -311,7 +319,7 @@ export default function Live() {
                         </span>
                       }
                     >
-                      <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+                      <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                         <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(c.prob * 100).toFixed(2)}%</div></div>
                         <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${c.est_dividend}</div></div>
                         <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{c.cold_score.toFixed(1)}</div></div>

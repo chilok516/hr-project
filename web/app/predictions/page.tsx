@@ -155,10 +155,10 @@ export default function Predictions() {
                     </span>
                   }
                 >
-                  <div className="mb-3 text-xs text-muted">
+                  <div className="mb-3 text-sm text-muted">
                     {t("jockey")}：{pickName(lang, h.jockey, h.jockey_cn)}
                   </div>
-                  <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+                  <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                     <div><div className="text-muted">{t("odds")}</div><div className="mt-0.5 font-medium tabular-nums">{h.win_odds.toFixed(1)}</div></div>
                     <div><div className="text-muted">{t("fund")}</div><div className="mt-0.5 font-medium tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</div></div>
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
@@ -227,7 +227,7 @@ export default function Predictions() {
                         </span>
                       }
                     >
-                      <div className="grid grid-cols-3 gap-y-2.5 text-xs">
+                      <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                         <div><div className="text-muted">{t("prob")}</div><div className="mt-0.5 font-medium tabular-nums">{(c.prob * 100).toFixed(2)}%</div></div>
                         <div><div className="text-muted">{t("estDiv")}</div><div className="mt-0.5 font-medium tabular-nums">${c.est_dividend}</div></div>
                         <div><div className="text-muted">{t("ev")}</div><div className="mt-0.5"><span className={`badge ${c.ev > 0.4 ? "badge-green" : "badge-red"}`}>{c.ev.toFixed(3)}</span></div></div>
