@@ -243,10 +243,20 @@ class PredictionService:
 
     def compute_live_prediction(self, runners, race_info: dict) -> dict:
         """Full live prediction: features → models → combos → stakes."""
+        from datetime import timedelta
         from src.features.feature_engine import FeatureEngineer
 
         live_df = runners_to_dataframe(runners, race_info)
-        combined = pd.concat([self.raw_df, live_df], ignore_index=True)
+
+        # Use last 6 months of raw data for feature engineering (speed).
+        # Rolling windows are short (5-50 races), so 6 months is sufficient
+        # and cuts compute time ~5x on constrained containers.
+        target = pd.to_datetime(race_info["race_date"])
+        cutoff = target - timedelta(days=180)
+        raw_dates = pd.to_datetime(self.raw_df["race_date"], errors="coerce")
+        recent_raw = self.raw_df[raw_dates >= cutoff].copy()
+
+        combined = pd.concat([recent_raw, live_df], ignore_index=True)
 
         fe = FeatureEngineer(combined)
         fdf = fe.build_all_features()
