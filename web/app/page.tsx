@@ -23,7 +23,13 @@ export default function Predictions() {
   useEffect(() => {
     if (!date) return;
     setRaces([]);
-    api.races(date).then((r) => setRaces(r.races)).catch(() => setRaces([]));
+    api.races(date).then((r) => {
+      setRaces(r.races);
+      if (r.races.length) {
+        setVenue(r.races[0].venue);
+        setRaceNo(r.races[0].race_no);
+      }
+    }).catch(() => setRaces([]));
   }, [date]);
 
   useEffect(() => {
@@ -38,6 +44,7 @@ export default function Predictions() {
   }, [date, venue, raceNo]);
 
   const venues = ["ST", "HV"];
+  const venueRaces = races.filter((r) => r.venue === venue);
 
   return (
     <div>
@@ -55,14 +62,19 @@ export default function Predictions() {
           ))}
         </select>
 
-        <select value={venue} onChange={(e) => { setVenue(e.target.value); setRaceNo(1); }}>
+        <select value={venue} onChange={(e) => {
+          const v = e.target.value;
+          setVenue(v);
+          const first = races.find((r) => r.venue === v);
+          setRaceNo(first ? first.race_no : 1);
+        }}>
           {venues.map((v) => (
             <option key={v} value={v}>{v === "ST" ? "Sha Tin" : "Happy Valley"}</option>
           ))}
         </select>
 
         <select value={raceNo} onChange={(e) => setRaceNo(Number(e.target.value))}>
-          {races.map((r) => (
+          {venueRaces.map((r) => (
             <option key={r.race_no} value={r.race_no}>
               R{r.race_no} — {r.race_class} · {r.distance}m
             </option>
