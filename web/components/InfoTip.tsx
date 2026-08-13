@@ -43,7 +43,7 @@ export default function InfoTip({ text }: { text: string }) {
       </button>
       {open && (
         <div
-          className="fixed z-50 w-56 rounded-lg border border-border bg-white p-3 text-xs font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-lg"
+          className="fixed z-50 w-56 whitespace-normal break-words rounded-lg border border-border bg-white p-3 text-left text-xs font-normal normal-case leading-relaxed tracking-normal text-foreground shadow-lg"
           style={{ top: pos.top, left: pos.left }}
         >
           {text}
