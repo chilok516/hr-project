@@ -53,7 +53,7 @@ def scrape_cn_race(session, race_date: str, race_no: int) -> list:
     """Return list of {horse_id, horse_no, name_cn, jockey_cn, trainer_cn} for one race."""
     params = {"RaceDate": race_date, "RaceNo": race_no}
     try:
-        resp = session.get(CHINESE_RESULTS, params=params, timeout=30)
+        resp = session.get(CHINESE_RESULTS, params=params, timeout=60)
         soup = BeautifulSoup(resp.content, "lxml")
     except Exception:
         return []
@@ -104,14 +104,32 @@ def main():
             "trainer_en": str(row["trainer"]),
         }
 
-    horse_map = {}   # English name -> Chinese name
-    jockey_map = {}  # English jockey -> Chinese jockey
-    trainer_map = {} # English trainer -> Chinese trainer
+    # Resume support: load partial progress
+    progress_file = DATA_PROCESSED / "names_cn_progress.json"
+    horse_map, jockey_map, trainer_map, done_dates = {}, {}, {}, set()
+    if progress_file.exists():
+        with open(progress_file) as f:
+            prev = json.load(f)
+        horse_map = prev.get("horses", {})
+        jockey_map = prev.get("jockeys", {})
+        trainer_map = prev.get("trainers", {})
+        done_dates = set(prev.get("done_dates", []))
+        logger.info(f"Resumed: {len(horse_map)} horses, {len(done_dates)} dates done")
+
+    remaining = [d for d in dates if d not in done_dates]
+    logger.info(f"Remaining: {len(remaining)} dates")
 
     session = requests.Session()
     session.headers.update(HEADERS)
 
-    for d in tqdm(dates, desc="Scraping Chinese"):
+    def save_progress():
+        with open(progress_file, "w") as f:
+            json.dump({
+                "horses": horse_map, "jockeys": jockey_map, "trainers": trainer_map,
+                "done_dates": sorted(done_dates),
+            }, f, ensure_ascii=False)
+
+    for i, d in enumerate(tqdm(remaining, desc="Scraping Chinese")):
         for race_no in range(1, 12):
             cn_results = scrape_cn_race(session, d, race_no)
             if not cn_results and race_no == 1:
@@ -130,15 +148,23 @@ def main():
                 if en_row["trainer_en"]:
                     trainer_map[en_row["trainer_en"]] = cr["trainer_cn"]
 
-            time.sleep(0.4)
-        time.sleep(0.3)
+            time.sleep(1.0)  # gentler rate limit (avoid HKJC throttle)
+
+        done_dates.add(d)
+        time.sleep(0.5)
+
+        # Incremental save every 20 dates
+        if (i + 1) % 20 == 0:
+            save_progress()
+            logger.info(f"Progress saved: {len(horse_map)} horses, {len(done_dates)} dates")
+
+    save_progress()
 
     payload = {
         "horses": horse_map,
         "jockeys": jockey_map,
         "trainers": trainer_map,
     }
-
     out = DATA_PROCESSED / "names_cn.json"
     with open(out, "w") as f:
         json.dump(payload, f, ensure_ascii=False, indent=1)
