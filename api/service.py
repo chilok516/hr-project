@@ -1,6 +1,7 @@
 """Prediction + backtest service layer for the FastAPI app."""
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -367,6 +368,155 @@ class PredictionService:
             "combos": combos,
             "suggested_total_stake": total_stake,
             "risk_caps": {"max_per_race": 500, "max_per_day": 2000},
+        }
+
+    # ---- Horse form (past performance) ----
+
+    @staticmethod
+    def _form_trend(pos_list: list) -> str:
+        if len(pos_list) < 2:
+            return "flat"
+        x = np.arange(len(pos_list), dtype=float)
+        y = np.array(pos_list, dtype=float)
+        slope = np.polyfit(x, y, 1)[0]
+        t = -slope  # positive = improving (positions shrinking)
+        if t > 0.3:
+            return "up"
+        if t < -0.3:
+            return "down"
+        return "flat"
+
+    @staticmethod
+    def _subset_stats(sub: pd.DataFrame) -> dict:
+        n = len(sub)
+        if n == 0:
+            return {"runs": 0, "win_rate": 0.0, "top3_rate": 0.0, "avg_pos": None}
+        pos = sub["finish_pos"].astype(float)
+        return {
+            "runs": n,
+            "win_rate": round(float((pos == 1).mean()), 3),
+            "top3_rate": round(float((pos <= 3).mean()), 3),
+            "avg_pos": round(float(pos.mean()), 1),
+        }
+
+    @staticmethod
+    def _is_wet(going: str) -> bool:
+        return str(going) not in ("GOOD", "GOOD TO FIRM", "STANDARD")
+
+    def horse_form(self, horse_name: str, as_of_date: str,
+                   distance: int = 0, venue: str = "", going: str = "") -> dict:
+        if self.raw_df is None:
+            return {"error": "no raw data"}
+
+        h = self.raw_df[self.raw_df["horse_name"] == horse_name].copy()
+        if h.empty:
+            return {"error": "horse not found"}
+
+        h["_dt"] = pd.to_datetime(h["race_date"], errors="coerce")
+        as_of = pd.to_datetime(as_of_date, errors="coerce")
+        h = h[h["_dt"] < as_of].sort_values("_dt", ascending=False)
+
+        base = {
+            "horse_name": horse_name,
+            "horse_name_cn": self._cn_horse(horse_name),
+        }
+        if h.empty:
+            return {**base, "runs": 0, "form_string": "", "recent": []}
+
+        total_runs = len(h)
+        recent10 = h.head(10)
+        recent6 = h.head(6)
+        recent5 = h.head(5)
+
+        # Form string (most recent first)
+        form_string = "-".join(str(int(p)) for p in recent6["finish_pos"].tolist())
+
+        # Consecutive top-3 streak
+        streak = 0
+        for p in h["finish_pos"].tolist():
+            if p <= 3:
+                streak += 1
+            else:
+                break
+
+        # Form trend (ascending order for slope)
+        last5_asc = recent5["finish_pos"].astype(float).tolist()[::-1]
+        trend = self._form_trend(last5_asc)
+
+        # Days since last run
+        last_date = h.iloc[0]["_dt"]
+        days_since = int((as_of - last_date).days) if pd.notna(last_date) and pd.notna(as_of) else None
+
+        # Conditions
+        venue_stats = {v: self._subset_stats(h[h["venue"] == v]) for v in ["ST", "HV"]}
+
+        turf_mask = h["course"].astype(str).str.contains("TURF", na=False)
+        course_stats = {
+            "turf": self._subset_stats(h[turf_mask]),
+            "awt": self._subset_stats(h[~turf_mask]),
+        }
+
+        wet_mask = h["going"].apply(self._is_wet)
+        going_stats = {
+            "good": self._subset_stats(h[~wet_mask]),
+            "wet": self._subset_stats(h[wet_mask]),
+        }
+
+        dist_stats = None
+        if distance and distance > 0:
+            dist_stats = self._subset_stats(h[h["distance"] == distance])
+
+        # Market
+        odds = h["win_odds"].astype(float)
+        odds_valid = odds[odds > 0]
+        market = {
+            "avg_odds": round(float(odds_valid.mean()), 1) if len(odds_valid) else None,
+            "last_odds": round(float(h.iloc[0]["win_odds"]), 1)
+            if pd.notna(h.iloc[0]["win_odds"]) else None,
+            "min_odds": round(float(odds_valid.min()), 1) if len(odds_valid) else None,
+            "max_odds": round(float(odds_valid.max()), 1) if len(odds_valid) else None,
+        }
+
+        # Recent races detail
+        recent = []
+        for _, r in h.head(8).iterrows():
+            sectional = [s for s in str(r.get("sectional_time", "")).split()
+                         if re.match(r"^\d+\.?\d*$", s)]
+            recent.append({
+                "date": str(r["race_date"]),
+                "venue": str(r.get("venue", "")),
+                "distance": int(r.get("distance", 0)),
+                "race_class": str(r.get("race_class", "")),
+                "going": str(r.get("going", "")),
+                "draw": int(r.get("draw", 0)),
+                "weight": int(r.get("weight", 0)),
+                "jockey": str(r.get("jockey", "")),
+                "jockey_cn": self._cn_jockey(str(r.get("jockey", ""))),
+                "odds": float(r.get("win_odds", 0)) if pd.notna(r.get("win_odds", np.nan)) else 0.0,
+                "finish_pos": int(r.get("finish_pos", 0)),
+                "margin": str(r.get("margin", "")),
+                "finish_time": str(r.get("finish_time", "")),
+                "sectional_time": sectional,
+            })
+
+        return {
+            **base,
+            "runs": total_runs,
+            "form_string": form_string,
+            "win_rate": round(float((recent10["finish_pos"] == 1).mean()), 3),
+            "top2_rate": round(float((recent10["finish_pos"] <= 2).mean()), 3),
+            "top3_rate": round(float((recent10["finish_pos"] <= 3).mean()), 3),
+            "avg_pos": round(float(recent5["finish_pos"].astype(float).mean()), 1),
+            "last_pos": int(h.iloc[0]["finish_pos"]),
+            "days_since_last": days_since,
+            "form_trend": trend,
+            "streak_top3": streak,
+            "venue": venue_stats,
+            "course": course_stats,
+            "going": going_stats,
+            "dist": dist_stats,
+            "market": market,
+            "recent": recent,
         }
 
     # ---- Backtest ----

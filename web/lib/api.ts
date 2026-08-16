@@ -141,6 +141,51 @@ export interface LivePrediction {
   risk_caps: { max_per_race: number; max_per_day: number };
 }
 
+export interface HorseFormConditions {
+  runs: number;
+  win_rate: number;
+  top3_rate: number;
+  avg_pos: number | null;
+}
+
+export interface HorseRecentRace {
+  date: string;
+  venue: string;
+  distance: number;
+  race_class: string;
+  going: string;
+  draw: number;
+  weight: number;
+  jockey: string;
+  jockey_cn: string;
+  odds: number;
+  finish_pos: number;
+  margin: string;
+  finish_time: string;
+  sectional_time: string[];
+}
+
+export interface HorseForm {
+  horse_name: string;
+  horse_name_cn: string;
+  runs: number;
+  form_string: string;
+  win_rate: number;
+  top2_rate: number;
+  top3_rate: number;
+  avg_pos: number;
+  last_pos: number;
+  days_since_last: number | null;
+  form_trend: string;
+  streak_top3: number;
+  venue: Record<string, HorseFormConditions>;
+  course: Record<string, HorseFormConditions>;
+  going: Record<string, HorseFormConditions>;
+  dist: HorseFormConditions | null;
+  market: { avg_odds: number | null; last_odds: number | null; min_odds: number | null; max_odds: number | null };
+  recent: HorseRecentRace[];
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { cache: "no-store" });
   if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -170,4 +215,8 @@ export const api = {
   livePredict: (date: string, venue: string, race_no: number) =>
     getJson<LivePrediction>(`/api/live/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
   liveStatus: () => getJson<Record<string, unknown>>("/api/live/status"),
+  horseForm: (name: string, date: string, distance: number, venue: string, going: string) =>
+    getJson<HorseForm>(
+      `/api/horse/form?name=${encodeURIComponent(name)}&date=${date}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}`,
+    ),
 };

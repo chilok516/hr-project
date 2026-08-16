@@ -81,6 +81,20 @@ def live_status():
     }
 
 
+@app.get("/horse/form")
+def horse_form(
+    name: str = Query(..., description="horse English name"),
+    date: str = Query(..., description="as-of date YYYY-MM-DD"),
+    distance: int = Query(0),
+    venue: str = Query(""),
+    going: str = Query(""),
+):
+    result = service.horse_form(name, date, distance, venue, going)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
 @app.get("/backtest/summary")
 def backtest_summary():
     return service.backtest_summary()

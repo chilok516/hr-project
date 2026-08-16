@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
 import { api, LiveRaceSummary, LivePrediction } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
 import { classLabel, goingLabel, distLabel, venueLabel, pickName } from "@/lib/i18n";
 import InfoTip from "@/components/InfoTip";
 import CollapsibleCard from "@/components/CollapsibleCard";
+import HorseForm from "@/components/HorseForm";
 
 function raceTime(venue: string, raceNo: number): string {
   const base = venue === "HV" ? { h: 19, m: 15 } : { h: 13, m: 0 };
@@ -33,6 +34,7 @@ export default function Live() {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [expandedHorse, setExpandedHorse] = useState<string | null>(null);
 
   const loadRaces = useCallback((d: string) => {
     setRaces([]);
@@ -205,23 +207,45 @@ export default function Live() {
                   </thead>
                   <tbody>
                     {prediction.horses.map((h) => (
-                      <tr key={h.horse_no}>
-                        <td><span className="saddlecloth">{h.horse_no}</span></td>
-                        <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                        <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
-                        <td className="tabular-nums">{h.draw}</td>
-                        <td className="tabular-nums">{h.weight}</td>
-                        <td className="font-bold text-lg tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
-                        <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
-                        {hasOdds && <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>}
-                        {hasOdds && (
+                      <Fragment key={h.horse_no}>
+                        <tr>
+                          <td><span className="saddlecloth">{h.horse_no}</span></td>
                           <td>
-                            <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
-                              {h.cold_score.toFixed(1)}
-                            </span>
+                            <button
+                              onClick={() => setExpandedHorse(expandedHorse === h.horse_name ? null : h.horse_name)}
+                              className={`font-semibold transition-colors hover:text-accent ${expandedHorse === h.horse_name ? "text-accent" : ""}`}
+                            >
+                              {pickName(lang, h.horse_name, h.horse_name_cn)}
+                            </button>
                           </td>
+                          <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
+                          <td className="tabular-nums">{h.draw}</td>
+                          <td className="tabular-nums">{h.weight}</td>
+                          <td className="font-bold text-lg tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
+                          <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
+                          {hasOdds && <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>}
+                          {hasOdds && (
+                            <td>
+                              <span className={`badge ${h.cold_score >= 4 ? "badge-amber" : "badge-gray"}`}>
+                                {h.cold_score.toFixed(1)}
+                              </span>
+                            </td>
+                          )}
+                        </tr>
+                        {expandedHorse === h.horse_name && (
+                          <tr key={`${h.horse_no}-form`}>
+                            <td colSpan={hasOdds ? 9 : 7} className="whitespace-normal bg-gray-50 p-4">
+                              <HorseForm
+                                name={h.horse_name}
+                                date={prediction.race_info.date}
+                                distance={prediction.race_info.distance}
+                                venue={prediction.race_info.venue}
+                                going={prediction.race_info.going}
+                              />
+                            </td>
+                          </tr>
                         )}
-                      </tr>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -253,6 +277,15 @@ export default function Live() {
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
                     {hasOdds && <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>}
                     {hasOdds && <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>}
+                  </div>
+                  <div className="mt-3 border-t border-border pt-3">
+                    <HorseForm
+                      name={h.horse_name}
+                      date={prediction.race_info.date}
+                      distance={prediction.race_info.distance}
+                      venue={prediction.race_info.venue}
+                      going={prediction.race_info.going}
+                    />
                   </div>
                 </CollapsibleCard>
               ))}
