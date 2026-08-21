@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { api, Bet } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 import { pickName, venueLabel } from "@/lib/i18n";
 import CollapsibleCard from "@/components/CollapsibleCard";
 
 export default function Backtest() {
   const { lang, t } = useLang();
+  const { region } = useRegion();
   const [bets, setBets] = useState<Bet[]>([]);
   const [total, setTotal] = useState(0);
   const [result, setResult] = useState("all");
@@ -23,10 +25,10 @@ export default function Backtest() {
 
   useEffect(() => {
     setLoading(true);
-    api.backtestBets({ result, venue, search, min_div: minDiv || 0, limit, offset })
+    api.backtestBets({ result, venue, search, min_div: minDiv || 0, limit, offset }, region)
       .then((d) => { setBets(d.bets); setTotal(d.total); })
       .finally(() => setLoading(false));
-  }, [result, venue, search, minDiv, offset]);
+  }, [result, venue, search, minDiv, offset, region]);
 
   const sorted = [...bets].sort((a, b) => {
     let va = (a as any)[sortCol];
@@ -88,8 +90,12 @@ export default function Backtest() {
         </select>
         <select value={venue} onChange={(e) => { setVenue(e.target.value); setOffset(0); }} className="select w-full sm:w-auto">
           <option value="all">{t("venues")}</option>
-          <option value="ST">{venueLabel("ST", lang)}</option>
-          <option value="HV">{venueLabel("HV", lang)}</option>
+          {region === "hk" && (
+            <>
+              <option value="ST">{venueLabel("ST", lang)}</option>
+              <option value="HV">{venueLabel("HV", lang)}</option>
+            </>
+          )}
         </select>
         <input
           placeholder={t("searchHorse")}

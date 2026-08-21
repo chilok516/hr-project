@@ -38,21 +38,21 @@ def health():
 
 
 @app.get("/dates")
-def list_dates():
-    return {"dates": service.list_dates()}
+def list_dates(region: str = Query("hk")):
+    return {"dates": service.list_dates(region)}
 
 
 @app.get("/races")
-def list_races(date: str = Query(..., description="YYYY-MM-DD")):
-    races = service.list_races(date)
+def list_races(date: str = Query(..., description="YYYY-MM-DD"), region: str = Query("hk")):
+    races = service.list_races(date, region)
     if not races:
         raise HTTPException(status_code=404, detail="no races for date")
     return {"races": races}
 
 
 @app.get("/predict")
-def predict(date: str, venue: str = "ST", race_no: int = 1):
-    result = service.predict_race(date, venue, race_no)
+def predict(date: str, venue: str = "ST", race_no: int = 1, region: str = Query("hk")):
+    result = service.predict_race(date, venue, race_no, region)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
@@ -88,16 +88,17 @@ def horse_form(
     distance: int = Query(0),
     venue: str = Query(""),
     going: str = Query(""),
+    region: str = Query("hk"),
 ):
-    result = service.horse_form(name, date, distance, venue, going)
+    result = service.horse_form(name, date, distance, venue, going, region)
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
 
 
 @app.get("/backtest/summary")
-def backtest_summary():
-    return service.backtest_summary()
+def backtest_summary(region: str = Query("hk")):
+    return service.backtest_summary(region)
 
 
 @app.get("/backtest/bets")
@@ -108,18 +109,19 @@ def backtest_bets(
     min_div: float = Query(None),
     limit: int = Query(500, le=5000),
     offset: int = Query(0),
+    region: str = Query("hk"),
 ):
-    return service.backtest_bets(result, venue, search, min_div, limit, offset)
+    return service.backtest_bets(result, venue, search, min_div, limit, offset, region)
 
 
 @app.get("/models/importance")
-def feature_importance(model: str = Query("top2")):
-    return {"model": model, "features": service.feature_importance(model)}
+def feature_importance(model: str = Query("top2"), region: str = Query("hk")):
+    return {"model": model, "features": service.feature_importance(model, region)}
 
 
 @app.get("/models/info")
-def model_info():
-    return service.model_info()
+def model_info(region: str = Query("hk")):
+    return service.model_info(region)
 
 
 if __name__ == "__main__":

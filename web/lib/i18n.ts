@@ -165,8 +165,9 @@ export function distLabel(m: number, lang: Lang): string {
 }
 
 export function venueLabel(v: string, lang: Lang): string {
-  if (lang === "zh") return v === "ST" ? "沙田" : "跑馬地";
-  return v === "ST" ? "Sha Tin" : "Happy Valley";
+  if (v === "ST") return lang === "zh" ? "沙田" : "Sha Tin";
+  if (v === "HV") return lang === "zh" ? "跑馬地" : "Happy Valley";
+  return v; // UK/overseas course names -> raw
 }
 
 export function pickName(lang: Lang, en: string, cn: string): string {

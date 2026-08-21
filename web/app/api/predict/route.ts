@@ -6,7 +6,8 @@ export async function GET(req: NextRequest) {
   const date = p.get("date") || "";
   const venue = p.get("venue") || "ST";
   const race_no = p.get("race_no") || "1";
+  const region = p.get("region") || "hk";
   return proxyGet(
-    `/predict?date=${encodeURIComponent(date)}&venue=${venue}&race_no=${race_no}`,
+    `/predict?date=${encodeURIComponent(date)}&venue=${venue}&race_no=${race_no}&region=${region}`,
   );
 }

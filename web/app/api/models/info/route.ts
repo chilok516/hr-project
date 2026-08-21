@@ -1,5 +1,7 @@
 import { proxyGet } from "@/lib/proxy";
+import { NextRequest } from "next/server";
 
-export async function GET() {
-  return proxyGet("/models/info");
+export async function GET(req: NextRequest) {
+  const region = req.nextUrl.searchParams.get("region") || "hk";
+  return proxyGet(`/models/info?region=${region}`);
 }

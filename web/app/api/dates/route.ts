@@ -1,5 +1,7 @@
 import { proxyGet } from "@/lib/proxy";
+import { NextRequest } from "next/server";
 
-export async function GET() {
-  return proxyGet("/dates");
+export async function GET(req: NextRequest) {
+  const region = req.nextUrl.searchParams.get("region") || "hk";
+  return proxyGet(`/dates?region=${region}`);
 }

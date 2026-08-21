@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
   const distance = p.get("distance") || "0";
   const venue = p.get("venue") || "";
   const going = p.get("going") || "";
+  const region = p.get("region") || "hk";
   return proxyGet(
-    `/horse/form?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}`,
+    `/horse/form?name=${encodeURIComponent(name)}&date=${encodeURIComponent(date)}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}&region=${region}`,
   );
 }

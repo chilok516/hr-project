@@ -30,6 +30,11 @@ class PredictionService:
         # Cache: date -> list of race card results (avoid re-scrape per request)
         self._live_cache: dict = {}
         self.cn_names: dict = {"horses": {}, "jockeys": {}, "trainers": {}}
+        # UK artifacts (models_uk / uk_features.csv / uk_race_results.csv)
+        self.uk_predictor: RacePredictor = None
+        self.uk_features_df: pd.DataFrame = None
+        self.uk_raw_df: pd.DataFrame = None
+        self.uk_bets_detail: dict = None
 
     def load(self):
         self._load_models()
@@ -38,6 +43,7 @@ class PredictionService:
         self._load_bets()
         self._load_cold_score()
         self._load_cn_names()
+        self._load_uk()
 
     def _load_cn_names(self):
         path = DATA_PROCESSED / "names_cn.json"
@@ -50,14 +56,17 @@ class PredictionService:
             except Exception as e:
                 logger.warning(f"Failed to load Chinese names: {e}")
 
-    def _cn_horse(self, name: str) -> str:
-        return self.cn_names.get("horses", {}).get(name, "")
+    def _cn_horse(self, name: str, names: dict = None) -> str:
+        d = names if names is not None else self.cn_names
+        return d.get("horses", {}).get(name, "")
 
-    def _cn_jockey(self, name: str) -> str:
-        return self.cn_names.get("jockeys", {}).get(name, "")
+    def _cn_jockey(self, name: str, names: dict = None) -> str:
+        d = names if names is not None else self.cn_names
+        return d.get("jockeys", {}).get(name, "")
 
-    def _cn_trainer(self, name: str) -> str:
-        return self.cn_names.get("trainers", {}).get(name, "")
+    def _cn_trainer(self, name: str, names: dict = None) -> str:
+        d = names if names is not None else self.cn_names
+        return d.get("trainers", {}).get(name, "")
 
     def _load_models(self):
         self.predictor = RacePredictor()
@@ -96,18 +105,64 @@ class PredictionService:
             except Exception as e:
                 logger.warning(f"Cold score calibration failed: {e}")
 
+    def _load_uk(self):
+        uk_models = DATA_MODELS.parent / "models_uk"
+        if (uk_models / "top2_lightgbm.pkl").exists():
+            self.uk_predictor = RacePredictor(model_dir=uk_models)
+            try:
+                self.uk_predictor.load_all()
+                logger.info("UK models loaded")
+            except Exception as e:
+                logger.warning(f"UK models not loaded: {e}")
+
+        path = DATA_PROCESSED / "uk_features.csv"
+        if path.exists():
+            self.uk_features_df = pd.read_csv(path, low_memory=False)
+            self.uk_features_df["race_date"] = pd.to_datetime(
+                self.uk_features_df["race_date"], errors="coerce")
+            logger.info(f"UK features loaded: {len(self.uk_features_df)} records")
+
+        raw_path = DATA_RAW / "uk_race_results.csv"
+        if raw_path.exists():
+            self.uk_raw_df = pd.read_csv(raw_path, low_memory=False)
+            logger.info(f"UK raw loaded: {len(self.uk_raw_df)} records")
+
+        bets_path = DATA_PROCESSED / "uk_bets_detail.json"
+        if bets_path.exists():
+            with open(bets_path) as f:
+                self.uk_bets_detail = json.load(f)
+            logger.info(f"UK bets loaded: {len(self.uk_bets_detail.get('bets', []))} bets")
+
+    def _region_ctx(self, region: str) -> dict:
+        if region == "uk":
+            return {
+                "features_df": self.uk_features_df,
+                "raw_df": self.uk_raw_df,
+                "predictor": self.uk_predictor,
+                "cn": {"horses": {}, "jockeys": {}, "trainers": {}},
+                "bets_detail": self.uk_bets_detail,
+            }
+        return {
+            "features_df": self.features_df,
+            "raw_df": self.raw_df,
+            "predictor": self.predictor,
+            "cn": self.cn_names,
+            "bets_detail": self.bets_detail,
+        }
+
     # ---- Prediction ----
 
-    def list_dates(self) -> list:
-        if self.features_df is None:
+    def list_dates(self, region: str = "hk") -> list:
+        df = self._region_ctx(region)["features_df"]
+        if df is None:
             return []
-        dates = sorted(self.features_df["race_date"].dt.strftime("%Y-%m-%d").unique())
+        dates = sorted(df["race_date"].dt.strftime("%Y-%m-%d").unique())
         return dates
 
-    def list_races(self, date_str: str) -> list:
-        if self.features_df is None:
+    def list_races(self, date_str: str, region: str = "hk") -> list:
+        df = self._region_ctx(region)["features_df"]
+        if df is None:
             return []
-        df = self.features_df
         mask = df["race_date"].dt.strftime("%Y-%m-%d") == date_str
         races = df[mask].groupby(["venue", "race_no"]).agg(
             n_horses=("horse_name", "count"),
@@ -117,11 +172,14 @@ class PredictionService:
         ).reset_index()
         return races.to_dict(orient="records")
 
-    def predict_race(self, date_str: str, venue: str, race_no: int) -> dict:
-        if self.features_df is None or self.predictor is None:
+    def predict_race(self, date_str: str, venue: str, race_no: int, region: str = "hk") -> dict:
+        ctx = self._region_ctx(region)
+        df = ctx["features_df"]
+        predictor = ctx["predictor"]
+        cn = ctx["cn"]
+        if df is None or predictor is None:
             return {"error": "service not loaded"}
 
-        df = self.features_df
         mask = (
             (df["race_date"].dt.strftime("%Y-%m-%d") == date_str)
             & (df["venue"] == venue)
@@ -131,7 +189,7 @@ class PredictionService:
         if race.empty:
             return {"error": "race not found"}
 
-        pred = self.predictor.predict_race(race)
+        pred = predictor.predict_race(race)
 
         # Build horse list
         horses = []
@@ -142,11 +200,11 @@ class PredictionService:
             horses.append({
                 "horse_no": int(row.get("horse_no", 0)),
                 "horse_name": hname,
-                "horse_name_cn": self._cn_horse(hname),
+                "horse_name_cn": self._cn_horse(hname, cn),
                 "jockey": jname,
-                "jockey_cn": self._cn_jockey(jname),
+                "jockey_cn": self._cn_jockey(jname, cn),
                 "trainer": tname,
-                "trainer_cn": self._cn_trainer(tname),
+                "trainer_cn": self._cn_trainer(tname, cn),
                 "win_odds": float(row.get("win_odds", 0)),
                 "finish_pos": int(row.get("finish_pos", 0)),
                 "fund_prob": float(row.get("fund_prob", 0)),
@@ -163,8 +221,8 @@ class PredictionService:
                 combos.append({
                     "horse_i": c.horse_i,
                     "horse_j": c.horse_j,
-                    "horse_i_cn": self._cn_horse(c.horse_i),
-                    "horse_j_cn": self._cn_horse(c.horse_j),
+                    "horse_i_cn": self._cn_horse(c.horse_i, cn),
+                    "horse_j_cn": self._cn_horse(c.horse_j, cn),
                     "horse_i_no": c.horse_i_no,
                     "horse_j_no": c.horse_j_no,
                     "prob": round(c.quinella_prob, 4),
@@ -404,11 +462,15 @@ class PredictionService:
         return str(going) not in ("GOOD", "GOOD TO FIRM", "STANDARD")
 
     def horse_form(self, horse_name: str, as_of_date: str,
-                   distance: int = 0, venue: str = "", going: str = "") -> dict:
-        if self.raw_df is None:
+                   distance: int = 0, venue: str = "", going: str = "",
+                   region: str = "hk") -> dict:
+        ctx = self._region_ctx(region)
+        raw = ctx["raw_df"]
+        cn = ctx["cn"]
+        if raw is None:
             return {"error": "no raw data"}
 
-        h = self.raw_df[self.raw_df["horse_name"] == horse_name].copy()
+        h = raw[raw["horse_name"] == horse_name].copy()
         if h.empty:
             return {"error": "horse not found"}
 
@@ -418,7 +480,7 @@ class PredictionService:
 
         base = {
             "horse_name": horse_name,
-            "horse_name_cn": self._cn_horse(horse_name),
+            "horse_name_cn": self._cn_horse(horse_name, cn),
         }
         if h.empty:
             return {**base, "runs": 0, "form_string": "", "recent": []}
@@ -448,7 +510,11 @@ class PredictionService:
         days_since = int((as_of - last_date).days) if pd.notna(last_date) and pd.notna(as_of) else None
 
         # Conditions
-        venue_stats = {v: self._subset_stats(h[h["venue"] == v]) for v in ["ST", "HV"]}
+        if region == "uk":
+            top_venues = h["venue"].value_counts().head(2).index.tolist()
+        else:
+            top_venues = ["ST", "HV"]
+        venue_stats = {v: self._subset_stats(h[h["venue"] == v]) for v in top_venues}
 
         turf_mask = h["course"].astype(str).str.contains("TURF", na=False)
         course_stats = {
@@ -491,7 +557,7 @@ class PredictionService:
                 "draw": int(r.get("draw", 0)),
                 "weight": int(r.get("weight", 0)),
                 "jockey": str(r.get("jockey", "")),
-                "jockey_cn": self._cn_jockey(str(r.get("jockey", ""))),
+                "jockey_cn": self._cn_jockey(str(r.get("jockey", "")), cn),
                 "odds": float(r.get("win_odds", 0)) if pd.notna(r.get("win_odds", np.nan)) else 0.0,
                 "finish_pos": int(r.get("finish_pos", 0)),
                 "margin": str(r.get("margin", "")),
@@ -521,10 +587,11 @@ class PredictionService:
 
     # ---- Backtest ----
 
-    def backtest_summary(self) -> dict:
-        if self.bets_detail is None:
+    def backtest_summary(self, region: str = "hk") -> dict:
+        bets_detail = self._region_ctx(region)["bets_detail"]
+        if bets_detail is None:
             return {"error": "no backtest data"}
-        return self.bets_detail.get("summary", {})
+        return bets_detail.get("summary", {})
 
     def backtest_bets(
         self,
@@ -534,11 +601,15 @@ class PredictionService:
         min_div: float = None,
         limit: int = 500,
         offset: int = 0,
+        region: str = "hk",
     ) -> dict:
-        if self.bets_detail is None:
+        ctx = self._region_ctx(region)
+        bets_detail = ctx["bets_detail"]
+        cn = ctx["cn"]
+        if bets_detail is None:
             return {"error": "no backtest data", "bets": [], "total": 0}
 
-        bets = self.bets_detail.get("bets", [])
+        bets = bets_detail.get("bets", [])
 
         if result and result != "all":
             bets = [b for b in bets if b["result"] == result]
@@ -549,8 +620,8 @@ class PredictionService:
             bets = [
                 b for b in bets
                 if s in b.get("combo", "").lower()
-                or s in self._cn_horse(b.get("horse_i", "")).lower()
-                or s in self._cn_horse(b.get("horse_j", "")).lower()
+                or s in self._cn_horse(b.get("horse_i", ""), cn).lower()
+                or s in self._cn_horse(b.get("horse_j", ""), cn).lower()
             ]
         if min_div and min_div > 0:
             bets = [b for b in bets if b.get("actual_div", 0) >= min_div]
@@ -560,30 +631,32 @@ class PredictionService:
 
         # Enrich with Chinese names
         for b in page:
-            b["horse_i_cn"] = self._cn_horse(b.get("horse_i", ""))
-            b["horse_j_cn"] = self._cn_horse(b.get("horse_j", ""))
+            b["horse_i_cn"] = self._cn_horse(b.get("horse_i", ""), cn)
+            b["horse_j_cn"] = self._cn_horse(b.get("horse_j", ""), cn)
 
         return {"bets": page, "total": total}
 
     # ---- Models ----
 
-    def feature_importance(self, model: str = "top2") -> list:
-        if self.predictor is None:
+    def feature_importance(self, model: str = "top2", region: str = "hk") -> list:
+        predictor = self._region_ctx(region)["predictor"]
+        if predictor is None:
             return []
-        m = getattr(self.predictor, model, None)
+        m = getattr(predictor, model, None)
         if m is None:
             return []
         imp = m.get_feature_importance()
         return imp.head(20).to_dict(orient="records")
 
-    def model_info(self) -> dict:
-        if self.predictor is None:
+    def model_info(self, region: str = "hk") -> dict:
+        predictor = self._region_ctx(region)["predictor"]
+        if predictor is None:
             return {}
         return {
             name: {
-                "features": len(getattr(self.predictor, name).feature_names),
-                "threshold": getattr(self.predictor, name).threshold,
-                "loaded": getattr(self.predictor, name).model is not None,
+                "features": len(getattr(predictor, name).feature_names),
+                "threshold": getattr(predictor, name).threshold,
+                "loaded": getattr(predictor, name).model is not None,
             }
             for name in ["fundamental", "top2", "market", "place"]
         }

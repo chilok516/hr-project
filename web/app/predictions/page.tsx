@@ -3,12 +3,14 @@
 import { useEffect, useState, Fragment } from "react";
 import { api, Prediction, RaceSummary } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 import { classLabel, goingLabel, distLabel, venueLabel, pickName } from "@/lib/i18n";
 import CollapsibleCard from "@/components/CollapsibleCard";
 import HorseForm from "@/components/HorseForm";
 
 export default function Predictions() {
   const { lang, t } = useLang();
+  const { region } = useRegion();
   const [dates, setDates] = useState<string[]>([]);
   const [races, setRaces] = useState<RaceSummary[]>([]);
   const [date, setDate] = useState("");
@@ -20,36 +22,40 @@ export default function Predictions() {
   const [expandedHorse, setExpandedHorse] = useState<string | null>(null);
 
   useEffect(() => {
-    api.dates().then((d) => {
+    setDates([]);
+    setRaces([]);
+    setPrediction(null);
+    setDate("");
+    api.dates(region).then((d) => {
       setDates(d.dates);
       if (d.dates.length) setDate(d.dates[d.dates.length - 1]);
     }).catch((e) => setError("Failed to load dates: " + e.message));
-  }, []);
+  }, [region]);
 
   useEffect(() => {
     if (!date) return;
     setRaces([]);
-    api.races(date).then((r) => {
+    api.races(date, region).then((r) => {
       setRaces(r.races);
       if (r.races.length) {
         setVenue(r.races[0].venue);
         setRaceNo(r.races[0].race_no);
       }
     }).catch(() => setRaces([]));
-  }, [date]);
+  }, [date, region]);
 
   useEffect(() => {
     if (!date || !venue) return;
     setLoading(true);
     setError("");
     setPrediction(null);
-    api.predict(date, venue, raceNo)
+    api.predict(date, venue, raceNo, region)
       .then((p) => setPrediction(p))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [date, venue, raceNo]);
+  }, [date, venue, raceNo, region]);
 
-  const venues = ["ST", "HV"];
+  const venues = Array.from(new Set(races.map((r) => r.venue)));
   const venueRaces = races.filter((r) => r.venue === venue);
 
   return (

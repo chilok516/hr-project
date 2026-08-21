@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, FeatureImportance } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 
 const modelOptions = [
   { value: "fundamental", label_en: "Fundamental (no odds)", label_zh: "基本面（無賠率）" },
@@ -13,16 +14,17 @@ const modelOptions = [
 
 export default function Models() {
   const { lang, t } = useLang();
+  const { region } = useRegion();
   const [model, setModel] = useState("top2");
   const [features, setFeatures] = useState<FeatureImportance[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setLoading(true);
-    api.featureImportance(model)
+    api.featureImportance(model, region)
       .then((d) => setFeatures(d.features))
       .finally(() => setLoading(false));
-  }, [model]);
+  }, [model, region]);
 
   const maxImp = features.length ? features[0].importance : 1;
 

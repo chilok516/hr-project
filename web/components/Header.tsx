@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 
 export default function Header() {
   const { lang, toggle, t } = useLang();
+  const { region, toggle: toggleRegion } = useRegion();
   const pathname = usePathname();
 
   const navItems = [
@@ -46,12 +48,21 @@ export default function Header() {
           })}
         </nav>
 
-        <button
-          onClick={toggle}
-          className="ml-auto rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
-        >
-          {lang === "zh" ? "EN" : "中文"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={toggleRegion}
+            className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
+            aria-label="Region"
+          >
+            {region === "hk" ? "🇭🇰 HK" : "🇬🇧 UK"}
+          </button>
+          <button
+            onClick={toggle}
+            className="rounded-lg border border-border bg-white px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-gray-50"
+          >
+            {lang === "zh" ? "EN" : "中文"}
+          </button>
+        </div>
       </div>
     </header>
   );

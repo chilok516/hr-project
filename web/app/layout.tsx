@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/LanguageContext";
+import { RegionProvider } from "@/lib/RegionContext";
 import Header from "@/components/Header";
 import BottomNav from "@/components/BottomNav";
 
@@ -21,9 +22,11 @@ export default function RootLayout({
     <html lang="zh-HK">
       <body className="font-sans">
         <LanguageProvider>
-          <Header />
-          <main className="px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8 pb-24 md:pb-8">{children}</main>
-          <BottomNav />
+          <RegionProvider>
+            <Header />
+            <main className="px-4 sm:px-6 lg:px-10 pt-6 sm:pt-8 pb-24 md:pb-8">{children}</main>
+            <BottomNav />
+          </RegionProvider>
         </LanguageProvider>
       </body>
     </html>

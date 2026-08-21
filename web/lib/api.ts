@@ -194,29 +194,30 @@ async function getJson<T>(path: string): Promise<T> {
 
 export const api = {
   health: () => getJson<Record<string, unknown>>("/api/health"),
-  dates: () => getJson<{ dates: string[] }>("/api/dates"),
-  races: (date: string) => getJson<{ races: RaceSummary[] }>(`/api/races?date=${date}`),
-  predict: (date: string, venue: string, race_no: number) =>
-    getJson<Prediction>(`/api/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
-  backtestSummary: () => getJson<BetSummary>("/api/backtest/summary"),
-  backtestBets: (params: Record<string, string | number>) => {
+  dates: (region = "hk") => getJson<{ dates: string[] }>(`/api/dates?region=${region}`),
+  races: (date: string, region = "hk") =>
+    getJson<{ races: RaceSummary[] }>(`/api/races?date=${date}&region=${region}`),
+  predict: (date: string, venue: string, race_no: number, region = "hk") =>
+    getJson<Prediction>(`/api/predict?date=${date}&venue=${venue}&race_no=${race_no}&region=${region}`),
+  backtestSummary: (region = "hk") => getJson<BetSummary>(`/api/backtest/summary?region=${region}`),
+  backtestBets: (params: Record<string, string | number>, region = "hk") => {
     const qs = new URLSearchParams(
-      Object.entries(params).map(([k, v]) => [k, String(v)]),
+      Object.entries({ ...params, region }).map(([k, v]) => [k, String(v)]),
     ).toString();
     return getJson<{ bets: Bet[]; total: number }>(`/api/backtest/bets?${qs}`);
   },
-  featureImportance: (model: string) =>
+  featureImportance: (model: string, region = "hk") =>
     getJson<{ model: string; features: FeatureImportance[] }>(
-      `/api/models/importance?model=${model}`,
+      `/api/models/importance?model=${model}&region=${region}`,
     ),
-  modelInfo: () => getJson<Record<string, unknown>>("/api/models/info"),
+  modelInfo: (region = "hk") => getJson<Record<string, unknown>>(`/api/models/info?region=${region}`),
   liveRaces: (date: string) =>
     getJson<{ races: LiveRaceSummary[] }>(`/api/live/races?date=${date}`),
   livePredict: (date: string, venue: string, race_no: number) =>
     getJson<LivePrediction>(`/api/live/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
   liveStatus: () => getJson<Record<string, unknown>>("/api/live/status"),
-  horseForm: (name: string, date: string, distance: number, venue: string, going: string) =>
+  horseForm: (name: string, date: string, distance: number, venue: string, going: string, region = "hk") =>
     getJson<HorseForm>(
-      `/api/horse/form?name=${encodeURIComponent(name)}&date=${date}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}`,
+      `/api/horse/form?name=${encodeURIComponent(name)}&date=${date}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}&region=${region}`,
     ),
 };

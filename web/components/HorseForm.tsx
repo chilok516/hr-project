@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { api, HorseForm as HorseFormData } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 import { venueLabel, distLabel, classLabel, goingLabel } from "@/lib/i18n";
 
 export default function HorseForm({
@@ -19,17 +20,18 @@ export default function HorseForm({
   going: string;
 }) {
   const { lang, t } = useLang();
+  const { region } = useRegion();
   const [data, setData] = useState<HorseFormData | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
     api
-      .horseForm(name, date, distance, venue, going)
+      .horseForm(name, date, distance, venue, going, region)
       .then((d) => { if (!cancelled) setData(d); })
       .catch((e) => { if (!cancelled) setError(e.message); });
     return () => { cancelled = true; };
-  }, [name, date, distance, venue, going]);
+  }, [name, date, distance, venue, going, region]);
 
   const L = (zh: string, en: string) => (lang === "zh" ? zh : en);
 
@@ -43,8 +45,10 @@ export default function HorseForm({
     data.form_trend === "up" ? "text-accent" : data.form_trend === "down" ? "text-danger" : "text-muted";
 
   const condRows = [
-    { label: venueLabel("ST", lang), s: data.venue["ST"] },
-    { label: venueLabel("HV", lang), s: data.venue["HV"] },
+    ...Object.entries(data.venue || {}).map(([k, s]) => ({
+      label: k === "ST" || k === "HV" ? venueLabel(k, lang) : k,
+      s,
+    })),
     { label: L("草地", "Turf"), s: data.course["turf"] },
     { label: L("全天候", "AWT/Dirt"), s: data.course["awt"] },
     { label: L("好地", "Good"), s: data.going["good"] },
