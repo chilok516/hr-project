@@ -67,9 +67,10 @@ def _get_numeric_cols(df: pd.DataFrame) -> list[str]:
 
 
 class HorseRaceModel:
-    def __init__(self, name: str = "model", exclude_odds: bool = False):
+    def __init__(self, name: str = "model", exclude_odds: bool = False, model_dir=None):
         self.name = name
         self.exclude_odds = exclude_odds
+        self.model_dir = Path(model_dir) if model_dir else DATA_MODELS
         self.model = None
         self.calibrator = None
         self.feature_names = []
@@ -190,7 +191,7 @@ class HorseRaceModel:
         return df.sort_values("importance", ascending=False)
 
     def save(self):
-        path = DATA_MODELS / f"{self.name}_lightgbm.pkl"
+        path = self.model_dir / f"{self.name}_lightgbm.pkl"
         joblib.dump({
             "model": self.model,
             "calibrator": self.calibrator,
@@ -201,7 +202,7 @@ class HorseRaceModel:
         logger.info(f"[{self.name}] Saved to {path}")
 
     def load(self):
-        path = DATA_MODELS / f"{self.name}_lightgbm.pkl"
+        path = self.model_dir / f"{self.name}_lightgbm.pkl"
         data = joblib.load(path)
         self.model = data["model"]
         self.calibrator = data.get("calibrator")
@@ -214,11 +215,11 @@ class HorseRaceModel:
 class RacePredictor:
     """ADR-002: Three-model system — fundamental, top2, market."""
 
-    def __init__(self):
-        self.fundamental = HorseRaceModel("fundamental", exclude_odds=True)
-        self.top2 = HorseRaceModel("top2", exclude_odds=True)
-        self.market = HorseRaceModel("market", exclude_odds=False)
-        self.place = HorseRaceModel("place", exclude_odds=False)
+    def __init__(self, model_dir=None):
+        self.fundamental = HorseRaceModel("fundamental", exclude_odds=True, model_dir=model_dir)
+        self.top2 = HorseRaceModel("top2", exclude_odds=True, model_dir=model_dir)
+        self.market = HorseRaceModel("market", exclude_odds=False, model_dir=model_dir)
+        self.place = HorseRaceModel("place", exclude_odds=False, model_dir=model_dir)
 
     def train_all(self, df: pd.DataFrame):
         logger.info("=== Fundamental Model (no odds) ===")
