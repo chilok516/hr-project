@@ -99,8 +99,8 @@ class QuinellaBacktest:
             # Predict on test date
             test_date_df = self._predict_race_day(models, test_date_df)
 
-            # Run quinella for each race on this date
-            for (race_no), race_group in test_date_df.groupby("race_no"):
+            # Run quinella for each race on this date (venue+race_no = unique race)
+            for (venue, race_no), race_group in test_date_df.groupby(["venue", "race_no"]):
                 total_races += 1
 
                 result = self._simulate_race(

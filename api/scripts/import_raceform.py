@@ -143,9 +143,11 @@ def main():
     logger.info(f"Cleaned invalid rows: {before} -> {len(df)} (dropped {before - len(df)})")
 
     # Fill remaining schema columns with defaults.
-    for c in ["rating_band", "running_position", "finish_time", "sectional_time",
+    for c in ["running_position", "finish_time", "sectional_time",
               "incident_remark", "quinella_div", "quinella_place_div"]:
         df[c] = ""
+    # rating_band must stay a non-empty string (feature_engine uses .str.extract)
+    df["rating_band"] = df["rating_band"].astype(str).replace(["", "nan", "None", "<NA>"], "0-0")
 
     out = df[OUTPUT_COLUMNS].drop_duplicates()
     out.to_csv(DATA_RAW / "uk_race_results.csv", index=False)
