@@ -216,6 +216,9 @@ export const api = {
   livePredict: (date: string, venue: string, race_no: number) =>
     getJson<LivePrediction>(`/api/live/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
   liveStatus: () => getJson<Record<string, unknown>>("/api/live/status"),
+  ukLiveRaces: (date: string) => getJson<{ meetings: Record<string, unknown>[] }>(`/api/live/uk/races?date=${date}`),
+  ukLivePredict: (meeting: string, race_no: number) =>
+    getJson<Prediction>(`/api/live/uk/predict?meeting=${encodeURIComponent(meeting)}&race_no=${race_no}`),
   horseForm: (name: string, date: string, distance: number, venue: string, going: string, region = "hk") =>
     getJson<HorseForm>(
       `/api/horse/form?name=${encodeURIComponent(name)}&date=${date}&distance=${distance}&venue=${venue}&going=${encodeURIComponent(going)}&region=${region}`,

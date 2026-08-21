@@ -3,10 +3,12 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { api, LiveRaceSummary, LivePrediction } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
+import { useRegion } from "@/lib/RegionContext";
 import { classLabel, goingLabel, distLabel, venueLabel, pickName } from "@/lib/i18n";
 import InfoTip from "@/components/InfoTip";
 import CollapsibleCard from "@/components/CollapsibleCard";
 import HorseForm from "@/components/HorseForm";
+import UkLive from "@/components/UkLive";
 
 function raceTime(venue: string, raceNo: number): string {
   const base = venue === "HV" ? { h: 19, m: 15 } : { h: 13, m: 0 };
@@ -25,6 +27,12 @@ function todayStr(): string {
 }
 
 export default function Live() {
+  const { region } = useRegion();
+  if (region === "uk") return <UkLive />;
+  return <HkLive />;
+}
+
+function HkLive() {
   const { lang, t, tf } = useLang();
   const [date, setDate] = useState(todayStr());
   const [races, setRaces] = useState<LiveRaceSummary[]>([]);
