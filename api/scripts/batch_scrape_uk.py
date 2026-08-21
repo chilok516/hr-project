@@ -13,7 +13,7 @@ from loguru import logger
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from config import DATA_RAW
-from src.scraper.euro_scraper import scrape_date, OUTPUT_COLUMNS
+from src.scraper.euro_scraper import scrape_date, probe, OUTPUT_COLUMNS
 import pandas as pd
 
 
@@ -33,7 +33,16 @@ def main():
     ap = argparse.ArgumentParser(description="Batch scrape UK/IRE flat results")
     ap.add_argument("--start", default="2024-01-01")
     ap.add_argument("--end", default="2026-08-20")
+    ap.add_argument("--wait-unblock", action="store_true", help="probe + wait if rate-limited")
     args = ap.parse_args()
+
+    # Wait for RacingPost to unblock full-result pages (406 rate limit).
+    if args.wait_unblock:
+        import time as _t
+        while not probe():
+            logger.warning("Detail pages rate-limited (406). Waiting 10 min before retry...")
+            _t.sleep(600)
+        logger.info("Detail pages accessible — starting scrape")
 
     out_path = DATA_RAW / "uk_race_results.csv"
     done_dates = set()

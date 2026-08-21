@@ -17,6 +17,7 @@ identically. Ex (Exacta, 1st+2nd any order) maps to quinella_div == 連贏.
 import re
 import time
 import json
+import random
 import requests
 from bs4 import BeautifulSoup
 from dataclasses import dataclass, asdict, field
@@ -63,8 +64,9 @@ def _get(url: str, retries: int = 3) -> Optional[BeautifulSoup]:
             logger.debug(f"{resp.status_code} for {url} (attempt {attempt + 1})")
         except Exception as e:
             logger.debug(f"Fetch error {url}: {e}")
-        time.sleep(1.5 * (attempt + 1))  # backoff on 406/429 rate limiting
-    logger.error(f"Failed after {retries} attempts: {url}")
+        # 406 = rate limited; back off progressively (3s, 9s, 27s)
+        time.sleep(3 * (3 ** attempt))
+    logger.warning(f"Failed after {retries} attempts (rate-limited?): {url}")
     return None
 
 
@@ -369,6 +371,11 @@ def scrape_detail(race: dict) -> List[dict]:
     return out
 
 
+def probe() -> bool:
+    """Return True if full-result detail pages are currently accessible."""
+    return _get(f"{BASE}/results/107/york/2026-08-20/910568") is not None
+
+
 def scrape_date(date_str: str) -> List[dict]:
     """Full scrape of one date: list -> details -> flat rows."""
     races = scrape_list(date_str)
@@ -385,7 +392,8 @@ def scrape_date(date_str: str) -> List[dict]:
         if detail_rows:
             rows.extend(detail_rows)
             flat_races += 1
-        time.sleep(0.8)  # gentle rate limit between detail pages
+        # slow + jittered delay to stay under RacingPost's rate limit
+        time.sleep(3.0 + random.random() * 2.0)
 
     logger.info(f"{date_str}: {len(races)} races, {flat_races} flat, {len(rows)} horses")
     return rows
