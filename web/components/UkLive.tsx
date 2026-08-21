@@ -56,12 +56,18 @@ export default function UkLive() {
 
   useEffect(() => {
     if (!selected) { setPrediction(null); return; }
-    setLoading(true);
-    setError("");
-    api.ukLivePredict(selected.meeting, selected.race_no)
-      .then((p) => setPrediction(p))
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const fetchPred = () => {
+      setLoading(true);
+      setError("");
+      api.ukLivePredict(selected.meeting, selected.race_no)
+        .then((p) => { if (!cancelled) setPrediction(p); })
+        .catch((e) => { if (!cancelled) setError(e.message); })
+        .finally(() => { if (!cancelled) setLoading(false); });
+    };
+    fetchPred();
+    const interval = setInterval(fetchPred, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [selected]);
 
   const label = (en: string, zh: string) => (lang === "zh" ? zh : en);
