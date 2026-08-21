@@ -475,23 +475,26 @@ class PredictionService:
                 odds_f = np.nan
             or_val = int(r["rating"]) if str(r["rating"]).isdigit() else np.nan
             age_val = int(str(r["age_sex"])[0]) if str(r["age_sex"])[:1].isdigit() else np.nan
-            feat["race_date"] = date_str
-            feat["venue"] = card["venue_code"]
-            feat["race_no"] = race_no
-            feat["distance"] = card["distance"]
-            feat["race_class"] = card["group"] or card["race_name"]
-            feat["going"] = "GOOD"
-            feat["horse_name"] = h
-            feat["horse_no"] = r["horse_no"]
+            # override numeric race-level features (draw/weight/odds/or/age)
             feat["draw"] = r["draw"]
-            feat["jockey"] = r["jockey"]
-            feat["trainer"] = r["trainer"]
             feat["weight"] = r["weight"]
             feat["win_odds"] = odds_f
             feat["or"] = or_val
             feat["age"] = age_val
             feat_rows.append(feat)
         live_feat = pd.DataFrame(feat_rows)
+
+        # set race-level metadata columns (fresh, avoids dtype conflicts)
+        live_feat["race_date"] = date_str
+        live_feat["venue"] = card["venue_code"]
+        live_feat["race_no"] = race_no
+        live_feat["distance"] = card["distance"]
+        live_feat["race_class"] = card["group"] or card["race_name"]
+        live_feat["going"] = "GOOD"
+        live_feat["horse_name"] = [r["horse"] for r in runners]
+        live_feat["horse_no"] = [r["horse_no"] for r in runners]
+        live_feat["jockey"] = [r["jockey"] for r in runners]
+        live_feat["trainer"] = [r["trainer"] for r in runners]
 
         # Recompute race-level relative features across the live field.
         if "win_odds" in live_feat.columns:
