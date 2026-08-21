@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import DATA_PROCESSED, DATA_MODELS, DATA_RAW
 from src.models.train import RacePredictor
 from src.combo.engine import ComboEngine
-from src.scraper.race_card import runners_to_dataframe, synthetic_race_card, RaceCardScraper
+from src.scraper.race_card import runners_to_dataframe, synthetic_race_card, RaceCardScraper, RACE_CARD_COLUMNS
 from src.signals.cold_score import ColdScoreCalibrator
 
 
@@ -426,6 +426,118 @@ class PredictionService:
             "combos": combos,
             "suggested_total_stake": total_stake,
             "risk_caps": {"max_per_race": 500, "max_per_day": 2000},
+        }
+
+    def uk_live_predict(self, meeting_code: str, race_no: int) -> dict:
+        """Predict an upcoming HKJC simulcast (UK/IRE) race using the UK models."""
+        from datetime import timedelta
+        from src.scraper.hkjc_simulcast import get_race_cards
+        from src.features.feature_engine import FeatureEngineer
+
+        if self.uk_raw_df is None or self.uk_predictor is None:
+            return {"error": "UK service not loaded"}
+
+        cards = get_race_cards(meeting_code)
+        if not cards or race_no > len(cards):
+            return {"error": "race card not found"}
+        card = cards[race_no - 1]
+        runners = card["runners"]
+        if not runners:
+            return {"error": "no runners declared"}
+
+        date_str = f"{meeting_code[:4]}-{meeting_code[4:6]}-{meeting_code[6:8]}"
+
+        rows = []
+        for i, r in enumerate(runners):
+            row = {c: np.nan for c in RACE_CARD_COLUMNS}
+            row.update({
+                "race_date": date_str,
+                "venue": card["venue_code"],
+                "race_no": race_no,
+                "race_class": card["group"] or card["race_name"],
+                "distance": card["distance"],
+                "going": "GOOD",
+                "course": card["surface"],
+                "rating_band": "0-0",
+                "horse_name": r["horse"],
+                "horse_id": "",
+                "horse_no": i + 1,
+                "draw": 0,
+                "jockey": "",
+                "trainer": r["trainer"],
+                "weight": 0,
+                "declared_weight": 0,
+                "finish_pos": np.nan,
+                "win_odds": np.nan,
+            })
+            rows.append(row)
+        live_df = pd.DataFrame(rows, columns=RACE_CARD_COLUMNS)
+
+        target = pd.to_datetime(date_str)
+        cutoff = target - timedelta(days=180)
+        raw_dates = pd.to_datetime(self.uk_raw_df["race_date"], errors="coerce")
+        recent_raw = self.uk_raw_df[raw_dates >= cutoff].copy()
+        combined = pd.concat([recent_raw, live_df], ignore_index=True)
+
+        fe = FeatureEngineer(combined)
+        fdf = fe.build_all_features()
+
+        mask = (fdf["race_date"] == target) & (fdf["race_no"] == race_no)
+        live_feat = fdf[mask].copy()
+        if live_feat.empty:
+            return {"error": "feature engineering produced no rows"}
+
+        pred = self.uk_predictor.predict_race(live_feat)
+
+        horses = []
+        for _, row in pred.iterrows():
+            hname = str(row.get("horse_name", ""))
+            horses.append({
+                "horse_no": int(row.get("horse_no", 0)),
+                "horse_name": hname,
+                "horse_name_cn": "",
+                "jockey": str(row.get("jockey", "")),
+                "jockey_cn": "",
+                "trainer": str(row.get("trainer", "")),
+                "trainer_cn": "",
+                "draw": int(row.get("draw", 0)),
+                "weight": int(row.get("weight", 0)),
+                "win_odds": 0.0,
+                "fund_prob": float(row.get("fund_prob", 0)),
+                "top2_prob": float(row.get("top2_prob", 0)),
+                "market_prob": float(row.get("market_prob", 0)),
+                "place_prob": float(row.get("place_prob", 0)),
+            })
+
+        combos = []
+        try:
+            combo_result = self.combo_engine.build_combos(pred, n_anchors=3)
+            for c in combo_result.combos:
+                combos.append({
+                    "horse_i": c.horse_i,
+                    "horse_j": c.horse_j,
+                    "horse_i_cn": "",
+                    "horse_j_cn": "",
+                    "horse_i_no": c.horse_i_no,
+                    "horse_j_no": c.horse_j_no,
+                    "prob": round(c.quinella_prob, 4),
+                    "est_dividend": round(c.est_dividend, 0),
+                    "ev": round(c.ev, 3),
+                })
+        except Exception as e:
+            logger.warning(f"UK live combo build failed: {e}")
+
+        return {
+            "race_info": {
+                "date": date_str,
+                "venue": card["venue_code"],
+                "race_no": race_no,
+                "distance": card["distance"],
+                "race_class": card["group"] or card["race_name"],
+                "going": "GOOD",
+            },
+            "horses": sorted(horses, key=lambda h: -h["top2_prob"]),
+            "combos": combos,
         }
 
     # ---- Horse form (past performance) ----

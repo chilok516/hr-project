@@ -81,6 +81,20 @@ def live_status():
     }
 
 
+@app.get("/live/uk/races")
+def live_uk_races(date: str = Query(..., description="YYYY-MM-DD")):
+    from src.scraper.hkjc_simulcast import list_meetings
+    return {"meetings": list_meetings(date)}
+
+
+@app.get("/live/uk/predict")
+def live_uk_predict(meeting: str = Query(...), race_no: int = Query(1)):
+    result = service.uk_live_predict(meeting, race_no)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
 @app.get("/horse/form")
 def horse_form(
     name: str = Query(..., description="horse English name"),
