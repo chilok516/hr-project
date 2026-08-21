@@ -64,18 +64,22 @@ def _parse_going(g: str) -> tuple:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python3 scripts/import_raceform.py /path/to/raceform.db")
+        print("Usage: python3 scripts/import_raceform.py /path/to/raceform.db [min-date]")
         return
 
     db_path = sys.argv[1]
+    min_date = sys.argv[2] if len(sys.argv) > 2 else "2019-01-01"
     if not Path(db_path).exists():
         logger.error(f"{db_path} not found")
         return
 
     con = sqlite3.connect(db_path)
-    df = pd.read_sql_query("SELECT * FROM data WHERE type = 'Flat'", con)
+    df = pd.read_sql_query(
+        "SELECT * FROM data WHERE type = 'Flat' AND date >= ? AND date GLOB '2*'",
+        con, params=(min_date,),
+    )
     con.close()
-    logger.info(f"Flat rows: {len(df)}")
+    logger.info(f"Flat rows (>= {min_date}): {len(df)}")
 
     # filter UK/IRE
     parsed = df["course"].apply(_parse_course_country)
