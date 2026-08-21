@@ -210,6 +210,95 @@ def _parse_surface(raw: str) -> str:
     return ""
 
 
+FORM_GUIDE_BASE = "https://consvc.hkjc.com/-/media/Sites/JCRW/FormGuide/Simulcast"
+
+
+def get_starter_runners(meeting_code: str, race_no: int) -> List[dict]:
+    """Fetch + parse the official 'Starters List' PDF for accurate runners
+    (saddlecloth Card, draw, horse CN/EN, age/sex, weight, rating, trainer, jockey, ref odds)."""
+    import io
+    import pdfplumber
+
+    meeting = _find_meeting_path(meeting_code)
+    if not meeting:
+        return []
+    season = meeting["season"]
+    date = f"{meeting_code[:4]}{meeting_code[4:6]}{meeting_code[6:8]}"
+    s_code = meeting_code.split("_")[-1]  # e.g. "S3"
+    url = f"{FORM_GUIDE_BASE}/{season}/{date}/OSE{date}_starter_{s_code}_r{race_no}.pdf"
+
+    r = requests.get(url, headers=HEADERS, timeout=60)
+    if r.status_code != 200 or not r.content.startswith(b"%PDF"):
+        logger.warning(f"Starter PDF not available: {url}")
+        return []
+
+    runners = []
+    with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+        for page in pdf.pages:
+            txt = page.extract_text() or ""
+            if "Card" not in txt and "馬號" not in txt:
+                continue
+            words = page.extract_words()
+            header_top = min(w["top"] for w in words if w["text"] in ("Card", "馬號"))
+            words = [w for w in words if w["top"] > header_top + 3]
+            words.sort(key=lambda w: (round(w["top"]), w["x0"]))
+
+            rows = []
+            cur_top = None
+            cur = []
+            for w in words:
+                t2 = round(w["top"])
+                if cur_top is None or abs(t2 - cur_top) <= 6:
+                    if cur_top is None:
+                        cur_top = t2
+                    cur.append(w)
+                else:
+                    rows.append(cur)
+                    cur = [w]
+                    cur_top = t2
+            if cur:
+                rows.append(cur)
+
+            def get(ws, lo, hi):
+                return " ".join(w["text"] for w in sorted(ws, key=lambda w: w["x0"]) if lo <= w["x0"] <= hi)
+
+            def split_tj(ws):
+                ws = sorted(ws, key=lambda w: w["x0"])
+                if len(ws) <= 1:
+                    return (" ".join(w["text"] for w in ws), "")
+                best, best_gap = 0, -1
+                for i in range(len(ws) - 1):
+                    gap = ws[i + 1]["x0"] - ws[i]["x1"]
+                    if gap > best_gap:
+                        best_gap, best = gap, i
+                return (" ".join(w["text"] for w in ws[:best + 1]),
+                        " ".join(w["text"] for w in ws[best + 1:]))
+
+            for i, row in enumerate(rows):
+                card_w = [w for w in row if 24 <= w["x0"] <= 46 and w["text"].isdigit()]
+                if not card_w:
+                    continue
+                card = int(card_w[0]["text"])
+                en_row = rows[i + 1] if i + 1 < len(rows) else []
+                tj_cn = split_tj([w for w in row if 356 <= w["x0"] <= 554])
+                tj_en = split_tj([w for w in en_row if 356 <= w["x0"] <= 554])
+                runners.append({
+                    "horse_no": card,
+                    "draw": int(get(row, 130, 152)) if get(row, 130, 152).isdigit() else 0,
+                    "horse_cn": get(row, 153, 265),
+                    "horse": re.sub(r"\s*\([^)]*\)\s*$", "", get(en_row, 153, 265)).strip(),
+                    "age_sex": get(row, 266, 289),
+                    "weight": int(get(row, 289, 315)) if get(row, 289, 315).isdigit() else 0,
+                    "rating": get(row, 316, 356).strip("[]"),
+                    "trainer_cn": tj_cn[0],
+                    "jockey_cn": tj_cn[1],
+                    "trainer": tj_en[0],
+                    "jockey": tj_en[1],
+                    "odds": get(row, 555, 590),
+                })
+    return runners
+
+
 if __name__ == "__main__":
     import sys
     date = sys.argv[1] if len(sys.argv) > 1 else "2026-08-21"

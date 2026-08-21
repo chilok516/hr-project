@@ -35,6 +35,8 @@ class PredictionService:
         self.uk_features_df: pd.DataFrame = None
         self.uk_raw_df: pd.DataFrame = None
         self.uk_bets_detail: dict = None
+        self.uk_current_form: pd.DataFrame = None
+        self._uk_live_cache: dict = {}
 
     def load(self):
         self._load_models()
@@ -121,6 +123,13 @@ class PredictionService:
             self.uk_features_df["race_date"] = pd.to_datetime(
                 self.uk_features_df["race_date"], errors="coerce")
             logger.info(f"UK features loaded: {len(self.uk_features_df)} records")
+            # Precompute current form (latest feature row per horse) for fast live prediction.
+            self.uk_current_form = (
+                self.uk_features_df.sort_values("race_date")
+                .groupby("horse_name", sort=False).tail(1)
+                .set_index("horse_name")
+            )
+            logger.info(f"UK current form precomputed for {len(self.uk_current_form)} horses")
 
         raw_path = DATA_RAW / "uk_race_results.csv"
         if raw_path.exists():
@@ -430,79 +439,99 @@ class PredictionService:
 
     def uk_live_predict(self, meeting_code: str, race_no: int) -> dict:
         """Predict an upcoming HKJC simulcast (UK/IRE) race using the UK models."""
-        from datetime import timedelta
-        from src.scraper.hkjc_simulcast import get_race_cards
-        from src.features.feature_engine import FeatureEngineer
+        from src.scraper.hkjc_simulcast import get_race_cards, get_starter_runners
 
         if self.uk_raw_df is None or self.uk_predictor is None:
             return {"error": "UK service not loaded"}
+
+        cache_key = f"{meeting_code}:{race_no}"
+        if cache_key in self._uk_live_cache:
+            return self._uk_live_cache[cache_key]
 
         cards = get_race_cards(meeting_code)
         if not cards or race_no > len(cards):
             return {"error": "race card not found"}
         card = cards[race_no - 1]
-        runners = card["runners"]
+        runners = get_starter_runners(meeting_code, race_no)
         if not runners:
-            return {"error": "no runners declared"}
+            return {"error": "no starters declared"}
 
         date_str = f"{meeting_code[:4]}-{meeting_code[4:6]}-{meeting_code[6:8]}"
 
-        rows = []
-        for i, r in enumerate(runners):
-            row = {c: np.nan for c in RACE_CARD_COLUMNS}
-            row.update({
-                "race_date": date_str,
-                "venue": card["venue_code"],
-                "race_no": race_no,
-                "race_class": card["group"] or card["race_name"],
-                "distance": card["distance"],
-                "going": "GOOD",
-                "course": card["surface"],
-                "rating_band": "0-0",
-                "horse_name": r["horse"],
-                "horse_id": "",
-                "horse_no": i + 1,
-                "draw": 0,
-                "jockey": "",
-                "trainer": r["trainer"],
-                "weight": 0,
-                "declared_weight": 0,
-                "finish_pos": np.nan,
-                "win_odds": np.nan,
-            })
-            rows.append(row)
-        live_df = pd.DataFrame(rows, columns=RACE_CARD_COLUMNS)
+        # Build feature matrix from precomputed current form (fast) instead of
+        # re-running the full feature engineering on the 6-month window.
+        if self.uk_current_form is None or self.uk_current_form.empty:
+            return {"error": "UK current form not precomputed"}
 
-        target = pd.to_datetime(date_str)
-        cutoff = target - timedelta(days=180)
-        raw_dates = pd.to_datetime(self.uk_raw_df["race_date"], errors="coerce")
-        recent_raw = self.uk_raw_df[raw_dates >= cutoff].copy()
-        combined = pd.concat([recent_raw, live_df], ignore_index=True)
+        feat_rows = []
+        for r in runners:
+            h = r["horse"]
+            feat = (self.uk_current_form.loc[h].copy()
+                    if h in self.uk_current_form.index
+                    else pd.Series(np.nan, index=self.uk_current_form.columns))
+            try:
+                odds_f = float(r["odds"])
+            except (ValueError, TypeError):
+                odds_f = np.nan
+            or_val = int(r["rating"]) if str(r["rating"]).isdigit() else np.nan
+            age_val = int(str(r["age_sex"])[0]) if str(r["age_sex"])[:1].isdigit() else np.nan
+            feat["race_date"] = date_str
+            feat["venue"] = card["venue_code"]
+            feat["race_no"] = race_no
+            feat["distance"] = card["distance"]
+            feat["race_class"] = card["group"] or card["race_name"]
+            feat["going"] = "GOOD"
+            feat["horse_name"] = h
+            feat["horse_no"] = r["horse_no"]
+            feat["draw"] = r["draw"]
+            feat["jockey"] = r["jockey"]
+            feat["trainer"] = r["trainer"]
+            feat["weight"] = r["weight"]
+            feat["win_odds"] = odds_f
+            feat["or"] = or_val
+            feat["age"] = age_val
+            feat_rows.append(feat)
+        live_feat = pd.DataFrame(feat_rows)
 
-        fe = FeatureEngineer(combined)
-        fdf = fe.build_all_features()
-
-        mask = (fdf["race_date"] == target) & (fdf["race_no"] == race_no)
-        live_feat = fdf[mask].copy()
-        if live_feat.empty:
-            return {"error": "feature engineering produced no rows"}
+        # Recompute race-level relative features across the live field.
+        if "win_odds" in live_feat.columns:
+            live_feat["odds"] = live_feat["win_odds"]
+            live_feat["odds_log"] = np.log1p(live_feat["win_odds"].clip(lower=0))
+            live_feat["odds_inv"] = 1.0 / live_feat["win_odds"].clip(lower=1.0)
+            live_feat["odds_rank"] = live_feat["win_odds"].rank(pct=True)
+        if "weight" in live_feat.columns:
+            live_feat["weight_zscore"] = (live_feat["weight"] - live_feat["weight"].mean()) / max(float(live_feat["weight"].std()), 0.01)
+            live_feat["weight_rank"] = live_feat["weight"].rank(pct=True)
+            live_feat["weight_burden"] = live_feat["weight"] - live_feat["weight"].mean()
+        if "horse_avg_pos" in live_feat.columns:
+            live_feat["form_rank"] = live_feat["horse_avg_pos"].rank(pct=True)
+        if "horse_last_pos" in live_feat.columns:
+            live_feat["last_pos_rank"] = live_feat["horse_last_pos"].rank(pct=True)
+        if "jockey_win_rate" in live_feat.columns:
+            live_feat["jockey_quality_delta"] = live_feat["jockey_win_rate"] - live_feat["jockey_win_rate"].mean()
+        if "trainer_win_rate" in live_feat.columns:
+            live_feat["trainer_quality_delta"] = live_feat["trainer_win_rate"] - live_feat["trainer_win_rate"].mean()
 
         pred = self.uk_predictor.predict_race(live_feat)
+
+        cn_lookup = {r["horse_no"]: r for r in runners}
 
         horses = []
         for _, row in pred.iterrows():
             hname = str(row.get("horse_name", ""))
+            hno = int(row.get("horse_no", 0))
+            rr = cn_lookup.get(hno, {})
             horses.append({
-                "horse_no": int(row.get("horse_no", 0)),
+                "horse_no": hno,
                 "horse_name": hname,
-                "horse_name_cn": "",
+                "horse_name_cn": rr.get("horse_cn", ""),
                 "jockey": str(row.get("jockey", "")),
-                "jockey_cn": "",
+                "jockey_cn": rr.get("jockey_cn", ""),
                 "trainer": str(row.get("trainer", "")),
-                "trainer_cn": "",
+                "trainer_cn": rr.get("trainer_cn", ""),
                 "draw": int(row.get("draw", 0)),
                 "weight": int(row.get("weight", 0)),
-                "win_odds": 0.0,
+                "win_odds": float(row.get("win_odds", 0)) if pd.notna(row.get("win_odds", np.nan)) else 0.0,
                 "fund_prob": float(row.get("fund_prob", 0)),
                 "top2_prob": float(row.get("top2_prob", 0)),
                 "market_prob": float(row.get("market_prob", 0)),
@@ -513,11 +542,13 @@ class PredictionService:
         try:
             combo_result = self.combo_engine.build_combos(pred, n_anchors=3)
             for c in combo_result.combos:
+                ri = cn_lookup.get(c.horse_i_no, {})
+                rj = cn_lookup.get(c.horse_j_no, {})
                 combos.append({
                     "horse_i": c.horse_i,
                     "horse_j": c.horse_j,
-                    "horse_i_cn": "",
-                    "horse_j_cn": "",
+                    "horse_i_cn": ri.get("horse_cn", ""),
+                    "horse_j_cn": rj.get("horse_cn", ""),
                     "horse_i_no": c.horse_i_no,
                     "horse_j_no": c.horse_j_no,
                     "prob": round(c.quinella_prob, 4),
@@ -527,7 +558,7 @@ class PredictionService:
         except Exception as e:
             logger.warning(f"UK live combo build failed: {e}")
 
-        return {
+        result = {
             "race_info": {
                 "date": date_str,
                 "venue": card["venue_code"],
@@ -539,6 +570,8 @@ class PredictionService:
             "horses": sorted(horses, key=lambda h: -h["top2_prob"]),
             "combos": combos,
         }
+        self._uk_live_cache[cache_key] = result
+        return result
 
     # ---- Horse form (past performance) ----
 
