@@ -90,6 +90,7 @@ def main():
 
     # map to OUTPUT_COLUMNS schema
     df["race_date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    df = df[df["race_date"] != "NaT"]
     df["race_no"] = df.groupby(["race_date", "venue"])["off"].rank(method="dense").astype(int)
     df["race_class"] = df["class"].fillna("").astype(str)
     # Group/Listed races have empty class but have pattern; map pattern to class
@@ -98,17 +99,17 @@ def main():
     df["going"], df["course"] = zip(*df["going"].apply(_parse_going))
     df["horse_name"] = df["horse"].apply(lambda h: re.sub(r"\s*\([^)]*\)\s*$", "", str(h)).strip())
     df["horse_id"] = ""
-    df["horse_no"] = df["num"].fillna(0).astype(int)
-    df["draw"] = df["draw"].fillna(0).astype(int)
+    df["horse_no"] = pd.to_numeric(df["num"], errors="coerce").fillna(0).astype(int)
+    df["draw"] = pd.to_numeric(df["draw"], errors="coerce").fillna(0).astype(int)
     df["jockey"] = df["jockey"].fillna("").astype(str)
     df["trainer"] = df["trainer"].fillna("").astype(str)
     df["weight"] = df["wgt"].apply(_weight_to_lbs)
     df["declared_weight"] = df["weight"]
-    df["finish_pos"] = df["pos"].fillna(0).astype(int)
+    df["finish_pos"] = pd.to_numeric(df["pos"], errors="coerce").fillna(0).astype(int)
     df["margin"] = df["btn"].fillna("").astype(str)
     df["win_odds"] = df["sp"].apply(_frac_to_dec)
     df["prize"] = df["prize"].fillna("").astype(str)
-    df["age"] = df["age"].fillna(0).astype(int)
+    df["age"] = pd.to_numeric(df["age"], errors="coerce").fillna(0).astype(int)
     df["or"] = pd.to_numeric(df["or"], errors="coerce")
     df["race_name"] = df["race_name"].fillna("").astype(str)
     df["race_type"] = "F"
