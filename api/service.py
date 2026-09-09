@@ -267,10 +267,11 @@ class PredictionService:
         try:
             card = self.race_card_scraper.get_race_card(slash_date, venue, race_no)
             if card.get("runners"):
-                card["race_info"] = {
-                    "race_date": slash_date, "venue": venue, "race_no": race_no,
-                    "race_class": "", "distance": 0, "going": "", "course": "", "rating_band": "",
-                }
+                info = card.get("race_info") or {}
+                info.setdefault("race_date", slash_date)
+                info.setdefault("venue", venue)
+                info.setdefault("race_no", race_no)
+                card["race_info"] = info
                 return card
         except Exception:
             pass

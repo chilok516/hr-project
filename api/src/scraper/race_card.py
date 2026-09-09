@@ -95,31 +95,92 @@ class RaceCardScraper:
         except Exception:
             return {"race_info": {}, "runners": []}
 
+        race_info = self._parse_race_header(soup, race_no)
+        runners = self._parse_runners(soup)
+        return {"race_info": race_info, "runners": runners}
+
+    def _parse_race_header(self, soup, race_no: int) -> Dict:
+        """Parse 'Race 1 - NAME ... 1200M, Good ... Rating: 40-0, Class 5' header."""
+        import re
+        text = soup.get_text(" ", strip=True)
+
+        header = {}
+        # Header spans from 'Race {n}' to the next 'Race ' or 'SETUP'
+        m = re.search(rf"Race\s*{race_no}\s*[-–].*?(?=Race\s*{race_no + 1}\b|SETUP)", text, re.DOTALL)
+        seg = m.group(0) if m else ""
+
+        dist_m = re.search(r"(\d{3,4})M", seg)
+        if dist_m:
+            header["distance"] = int(dist_m.group(1))
+
+        class_m = re.search(r"Class\s*(\d)", seg)
+        if class_m:
+            header["race_class"] = f"Class{class_m.group(1)}"
+        elif re.search(r"Gr\.?\s*\d|Group\s*\d", seg, re.IGNORECASE):
+            gm = re.search(r"(?:Gr\.?\s*|Group\s*)(\d)", seg, re.IGNORECASE)
+            header["race_class"] = f"G{gm.group(1)}" if gm else ""
+
+        going_m = re.search(r",\s*(Good|Good to Firm|Good to Yielding|Yielding|Soft|Heavy|Wet Fast|Slow|Standard)\s*(?:Prize|,|$)", seg, re.IGNORECASE)
+        if going_m:
+            header["going"] = going_m.group(1).upper()
+
+        rating_m = re.search(r"Rating\s*:\s*(\d+\s*-\s*\d+)", seg)
+        if rating_m:
+            header["rating_band"] = rating_m.group(1)
+
+        course_m = re.search(r'(TURF|AWT|Dirt)\s*,\s*"([^"]+)"', seg, re.IGNORECASE)
+        if course_m:
+            header["course"] = f'{course_m.group(1).upper()} - "{course_m.group(2)}"'
+
+        prize_m = re.search(r"Prize\s*Money\s*:\s*\$?([\d,]+)", seg)
+        if prize_m:
+            header["prize"] = prize_m.group(1)
+
+        return header
+
+    def _parse_runners(self, soup) -> list:
+        """Parse declared runners via header-name → index mapping (layout-agnostic)."""
         runners = []
-        # HKJC race card table: [HorseNo, Horse, Wt, Jockey, Trainer, Draw, Rating, ...]
+
         for table in soup.find_all("table"):
-            rows = table.find_all("tr")
-            for row in rows:
-                cols = row.find_all("td")
-                if len(cols) < 7:
+            header_map = None
+            for row in table.find_all("tr"):
+                cells = row.find_all(["th", "td"])
+                texts = [c.get_text(strip=True) for c in cells]
+
+                # Detect header row and map column names to indices.
+                if header_map is None and "Horse No." in texts and "Jockey" in texts and "Trainer" in texts:
+                    header_map = {
+                        name: i for i, name in enumerate(texts)
+                        if name in ("Horse No.", "Horse", "Brand No.", "Wt.", "Jockey", "Draw",
+                                    "Trainer", "Horse Wt. (Declaration)")
+                    }
                     continue
-                texts = [c.get_text(strip=True) for c in cols]
+
+                if not header_map or "Horse No." not in header_map:
+                    continue
+
                 try:
-                    horse_no = int(texts[0]) if texts[0].isdigit() else 0
+                    horse_no = int(texts[header_map["Horse No."]]) if texts[header_map["Horse No."]].isdigit() else 0
                     if not horse_no:
                         continue
                     runners.append(RaceCardRunner(
                         horse_no=horse_no,
-                        horse_name=texts[1] if len(texts) > 1 else "",
-                        jockey=texts[3] if len(texts) > 3 else "",
-                        trainer=texts[4] if len(texts) > 4 else "",
-                        weight=_safe_int(texts[2]) if len(texts) > 2 else 0,
-                        draw=_safe_int(texts[5]) if len(texts) > 5 else 0,
+                        horse_name=texts[header_map.get("Horse", -1)] if "Horse" in header_map else "",
+                        jockey=texts[header_map.get("Jockey", -1)] if "Jockey" in header_map else "",
+                        trainer=texts[header_map.get("Trainer", -1)] if "Trainer" in header_map else "",
+                        weight=_safe_int(texts[header_map["Wt."]]) if "Wt." in header_map else 0,
+                        draw=_safe_int(texts[header_map["Draw"]]) if "Draw" in header_map else 0,
+                        declared_weight=_safe_int(texts[header_map["Horse Wt. (Declaration)"]])
+                        if "Horse Wt. (Declaration)" in header_map else 0,
                     ))
                 except (ValueError, IndexError):
                     continue
 
-        return {"race_info": {}, "runners": runners}
+            if runners:
+                break
+
+        return runners
 
 
 def _safe_int(text: str) -> int:
