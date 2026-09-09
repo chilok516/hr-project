@@ -78,6 +78,10 @@ def estimate_quinella_dividend(
 
     If pool_size is None, assume market bet share = combo_prob
     (no favourite-longshot bias adjustment — apply β correction separately).
+
+    NOTE: this is SELF-REFERENTIAL when fed the model's own combo_prob —
+    it yields a constant EV of (1-takeout). Use market_quinella_dividend()
+    (from public win odds) to get a true market-implied price for EV.
     """
     if combo_prob <= 0:
         return float('inf')
@@ -90,6 +94,38 @@ def estimate_quinella_dividend(
         return (net_pool / est_bet_amount) * 10
     else:
         return (1 - takeout) / combo_prob * 10
+
+
+def market_quinella_dividend(
+    win_odds: np.ndarray,
+    idx_i: int,
+    idx_j: int,
+    takeout: float = 0.25,
+) -> float:
+    """Market-implied quinella dividend from public win odds (Harville).
+
+    This is the TRUE market price — independent of the model. EV computed
+    against this detects actual mispricing (model prob vs market price).
+
+    p_k = 1/odds_k normalised across the field, then Harville P({i,j} top2
+    any-order), dividend = (1-takeout)/P * 10 per $10 stake.
+    """
+    odds = np.asarray(win_odds, dtype=float)
+    odds = np.clip(odds, 1.05, None)
+    probs = 1.0 / odds
+    total = probs.sum()
+    if total <= 0:
+        return float(odds[idx_i] * odds[idx_j] / 3)
+    probs = probs / total
+
+    def _h(a: int, b: int) -> float:
+        denom = 1.0 - probs[a]
+        return probs[a] * probs[b] / denom if denom > 0 else 0.0
+
+    p_combo = _h(idx_i, idx_j) + _h(idx_j, idx_i)
+    if p_combo <= 0:
+        return float(odds[idx_i] * odds[idx_j] / 3)
+    return float((1 - takeout) / p_combo * 10)
 
 
 def calibrate_gamma(

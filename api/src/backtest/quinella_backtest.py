@@ -7,10 +7,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 from loguru import logger
 from collections import defaultdict
+from datetime import datetime
 
 from src.models.train import RacePredictor, HorseRaceModel
 from src.combo.engine import ComboEngine, ComboBet
-from src.risk.breakers import CircuitBreaker
+from src.combo.harville import market_quinella_dividend
+from src.risk.breakers import CircuitBreaker, HKT
+
+MAX_BETS_PER_DAY = 5
 
 
 @dataclass
@@ -43,6 +47,8 @@ class QuinellaBacktestResult:
     roi: float = 0.0
     final_bankroll: float = 100_000.0
     max_drawdown_pct: float = 0.0
+    breaker_state: str = "normal"
+    skipped_races: int = 0
     bets: list = field(default_factory=list)
     equity_curve: list = field(default_factory=list)
 
@@ -61,40 +67,61 @@ class QuinellaBacktest:
         self.cold_calibrator = None
         self.breaker = CircuitBreaker(current_bankroll=bankroll)
         self.bets: list[QuinellaBet] = []
+        self.bets_per_day: dict = {}
+        self._baseline_set = False
+        self._last_asof = None
         self.equity = [bankroll]
 
     def run(
         self,
         features_df: pd.DataFrame,
         n_anchors: int = 3,
-        ev_threshold: float = 0.95,
+        ev_threshold: Optional[float] = None,
         min_train_dates: int = 5,
         bet_type: str = "quinella",
+        refit_interval: int = 1,
+        max_train_dates: Optional[int] = None,
     ) -> QuinellaBacktestResult:
+        if ev_threshold is None:
+            ev_threshold = self.ev_threshold
+        if ev_threshold > 0:
+            logger.warning(
+                f"EV filter enabled (threshold {ev_threshold}). "
+                "EV = model_prob × market_implied_dividend/10; >1 means positive edge. "
+                "Market dividend is Harville-implied from SP win odds (no real Ex pool)."
+            )
         preds = features_df.sort_values("race_date").copy()
         dates = sorted(preds["race_date"].unique())
 
         skipped_races = 0
         total_races = 0
+        n_test_dates = len(dates[min_train_dates:])
+        models = None
 
         for i, test_date in enumerate(dates[min_train_dates:], start=min_train_dates):
-            train_dates = dates[:i]
-            train_df = preds[preds["race_date"].isin(train_dates)]
+            if (i - min_train_dates) % 50 == 0:
+                logger.info(f"progress: test date {i - min_train_dates}/{n_test_dates} "
+                            f"({test_date.date()}) bets={len(self.bets)} bankroll=${self.bankroll:,.0f}")
             test_date_df = preds[preds["race_date"] == test_date].copy()
 
-            if len(train_df) < 100:
-                continue
+            # Refit models every refit_interval dates (walk-forward standard fold)
+            if models is None or (i - min_train_dates) % refit_interval == 0:
+                train_dates = dates[:i]
+                if max_train_dates and len(train_dates) > max_train_dates:
+                    train_dates = train_dates[-max_train_dates:]
+                train_df = preds[preds["race_date"].isin(train_dates)]
+                if len(train_df) < 100:
+                    continue
 
-            # Cold score calibration on training data
-            if self.use_cold_score and self.cold_calibrator is None:
-                from src.signals.cold_score import ColdScoreCalibrator
-                self.cold_calibrator = ColdScoreCalibrator()
-                self.cold_calibrator.calibrate(train_df)
+                # Cold score calibration on training data
+                if self.use_cold_score and self.cold_calibrator is None:
+                    from src.signals.cold_score import ColdScoreCalibrator
+                    self.cold_calibrator = ColdScoreCalibrator()
+                    self.cold_calibrator.calibrate(train_df)
 
-            # Train models on past data
-            models = self._train_models(train_df)
-            if models is None:
-                continue
+                models = self._train_models(train_df)
+                if models is None:
+                    continue
 
             # Predict on test date
             test_date_df = self._predict_race_day(models, test_date_df)
@@ -102,6 +129,11 @@ class QuinellaBacktest:
             # Run quinella for each race on this date (venue+race_no = unique race)
             for (venue, race_no), race_group in test_date_df.groupby(["venue", "race_no"]):
                 total_races += 1
+
+                race_asof = self._race_asof(race_group)
+                if not self.breaker.can_trade_race(asof=race_asof):
+                    skipped_races += 1
+                    continue
 
                 result = self._simulate_race(
                     race_group, models, n_anchors, ev_threshold, bet_type=bet_type,
@@ -111,7 +143,7 @@ class QuinellaBacktest:
                     continue
 
                 for bet_info in result["bets"]:
-                    self._record_bet(bet_info)
+                    self._record_bet(bet_info, race_asof)
 
         return self._compile_results(total_races, skipped_races)
 
@@ -124,12 +156,17 @@ class QuinellaBacktest:
                 model.model_type = "lightgbm"
 
             # Only train fundamental + top2 (what we need for quinella)
+            y_win = train_df["target_win"].values
+            y_top2 = train_df["target_top2"].values
+            pw_win = (len(y_win) - y_win.sum()) / max(y_win.sum(), 1)
+            pw_top2 = (len(y_top2) - y_top2.sum()) / max(y_top2.sum(), 1)
+
             predictor.fundamental.model = lgb.LGBMClassifier(
-                scale_pos_weight=11, n_estimators=80, num_leaves=31,
+                scale_pos_weight=pw_win, n_estimators=80, num_leaves=31,
                 learning_rate=0.08, verbose=-1, objective="binary",
             )
             predictor.top2.model = lgb.LGBMClassifier(
-                scale_pos_weight=5, n_estimators=80, num_leaves=31,
+                scale_pos_weight=pw_top2, n_estimators=80, num_leaves=31,
                 learning_rate=0.08, verbose=-1, objective="binary",
             )
 
@@ -138,9 +175,6 @@ class QuinellaBacktest:
 
             X_fund = train_df[feats_fund].fillna(train_df[feats_fund].median()).values
             X_top2 = train_df[feats_top2].fillna(train_df[feats_top2].median()).values
-
-            y_win = train_df["target_win"].values
-            y_top2 = train_df["target_top2"].values
 
             predictor.fundamental.model.fit(X_fund, y_win)
             predictor.top2.model.fit(X_top2, y_top2)
@@ -199,7 +233,7 @@ class QuinellaBacktest:
 
         for combo in combo_result.combos:
             # EV filter: skip combos below threshold
-            if self.ev_threshold > 0 and combo.ev < self.ev_threshold:
+            if ev_threshold > 0 and combo.ev < ev_threshold:
                 continue
 
             if bet_type == "placeQ":
@@ -257,9 +291,7 @@ class QuinellaBacktest:
             if "quinella_div" in race_df.columns:
                 qdiv = race_df.iloc[i_idx].get("quinella_div", 0) or race_df.iloc[j_idx].get("quinella_div", 0)
                 if qdiv > 0: return float(qdiv)
-            odds_i = race_df.iloc[i_idx].get("win_odds", 10)
-            odds_j = race_df.iloc[j_idx].get("win_odds", 10)
-            return float(odds_i * odds_j / 3)
+            return market_quinella_dividend(race_df["win_odds"].values, i_idx, j_idx)
         return None
 
     def _get_actual_placeQ(
@@ -282,10 +314,29 @@ class QuinellaBacktest:
             return float(odds_i * odds_j / 6)
         return None
 
-    def _record_bet(self, bet: QuinellaBet):
+    def _record_bet(self, bet: QuinellaBet, race_asof: datetime):
+        self._last_asof = race_asof
+        if not self._baseline_set:
+            self.breaker.last_reset_daily = race_asof
+            self.breaker.last_reset_weekly = race_asof
+            self._baseline_set = True
+
+        day_key = race_asof.date().isoformat()
+        if self.bets_per_day.get(day_key, 0) >= MAX_BETS_PER_DAY:
+            return
+
+        self.breaker.record_bet(bet.profit, asof=race_asof)
+        self.bets_per_day[day_key] = self.bets_per_day.get(day_key, 0) + 1
         self.bets.append(bet)
         self.bankroll += bet.profit
         self.equity.append(self.bankroll)
+
+    @staticmethod
+    def _race_asof(race_group: pd.DataFrame) -> datetime:
+        try:
+            return pd.to_datetime(race_group.iloc[0]["race_date"]).to_pydatetime().replace(tzinfo=HKT)
+        except (ValueError, TypeError):
+            return datetime.now(HKT)
 
     def _compile_results(self, total_races: int, skipped: int) -> QuinellaBacktestResult:
         if not self.bets:
@@ -308,6 +359,8 @@ class QuinellaBacktest:
             roi=total_profit / total_staked if total_staked > 0 else 0,
             final_bankroll=self.bankroll,
             max_drawdown_pct=float(dd.min()) if len(dd) > 0 else 0,
+            breaker_state=self.breaker.get_status(asof=self._last_asof).get("state", "normal"),
+            skipped_races=skipped,
             bets=self.bets,
             equity_curve=self.equity,
         )

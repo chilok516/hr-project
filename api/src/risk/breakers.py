@@ -49,8 +49,8 @@ class CircuitBreaker:
         self.last_reset_daily = datetime.now(HKT)
         self.last_reset_weekly = datetime.now(HKT)
 
-    def _check_reset(self):
-        now = datetime.now(HKT)
+    def _check_reset(self, now: Optional[datetime] = None):
+        now = now or datetime.now(HKT)
 
         # Daily reset at midnight HKT
         if now.date() > self.last_reset_daily.date():
@@ -60,16 +60,16 @@ class CircuitBreaker:
                 self.state = BreakerState.NORMAL
                 logger.info("Daily breaker reset")
 
-        # Weekly reset on Monday
-        if now.weekday() == 0 and now.date() > self.last_reset_weekly.date():
+        # Weekly reset on ISO week boundary (handles backtest dates, not just live Mondays)
+        if now.isocalendar()[:2] > self.last_reset_weekly.isocalendar()[:2]:
             self.weekly_pnl = 0.0
             self.last_reset_weekly = now
             if self.state == BreakerState.WEEKLY_STOP:
                 self.state = BreakerState.NORMAL
                 logger.info("Weekly breaker reset")
 
-    def record_bet(self, profit: float):
-        self._check_reset()
+    def record_bet(self, profit: float, asof: Optional[datetime] = None):
+        self._check_reset(asof)
 
         self.current_bankroll += profit
         self.daily_pnl += profit
@@ -128,19 +128,26 @@ class CircuitBreaker:
                     f"Pausing for 1 race."
                 )
 
-    def can_trade(self) -> bool:
-        self._check_reset()
+    def can_trade(self, asof: Optional[datetime] = None) -> bool:
+        self._check_reset(asof)
         if self.state == BreakerState.FULL_STOP:
             return False
         if self.state in [BreakerState.DAILY_STOP, BreakerState.WEEKLY_STOP]:
             return False
         return True
 
-    def can_trade_race(self) -> bool:
-        return self.can_trade() and self.state != BreakerState.RACE_PAUSE
+    def can_trade_race(self, asof: Optional[datetime] = None) -> bool:
+        if not self.can_trade(asof):
+            return False
+        if self.state == BreakerState.RACE_PAUSE:
+            self.state = BreakerState.NORMAL
+            self.consecutive_losses = 0
+            logger.info("Race pause consumed — resuming next race")
+            return False
+        return True
 
-    def get_status(self) -> dict:
-        self._check_reset()
+    def get_status(self, asof: Optional[datetime] = None) -> dict:
+        self._check_reset(asof)
         drawdown = (self.peak_bankroll - self.current_bankroll) / self.peak_bankroll
         return {
             "state": self.state.value,

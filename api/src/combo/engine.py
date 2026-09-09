@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from loguru import logger
 
 from src.combo.harville import (
-    quinella_combo_prob, estimate_quinella_dividend, calibrate_gamma, calibrate_beta,
+    quinella_combo_prob, estimate_quinella_dividend, market_quinella_dividend,
+    calibrate_gamma, calibrate_beta,
 )
 
 
@@ -131,15 +132,21 @@ class ComboEngine:
             probs = np.ones(n) / n
 
         # Generate all C(N,2) combinations
+        has_market_odds = "win_odds" in df.columns and df["win_odds"].notna().all()
+        win_odds = df["win_odds"].values.astype(float) if has_market_odds else None
+
         for pos_i, pos_j in combinations(anchor_positions, 2):
             p = quinella_combo_prob(
                 probs[pos_i], probs[pos_j], probs, pos_i, pos_j, self.gamma,
             )
-            est_div = estimate_quinella_dividend(p, takeout=self.takeout_quinella)
-
-            # Apply β adjustment for pool bias
-            if self.beta_quinella < 1.0:
-                est_div = est_div ** self.beta_quinella
+            if win_odds is not None:
+                est_div = market_quinella_dividend(
+                    win_odds, pos_i, pos_j, takeout=self.takeout_quinella,
+                )
+            else:
+                est_div = estimate_quinella_dividend(p, takeout=self.takeout_quinella)
+                if self.beta_quinella < 1.0:
+                    est_div = est_div ** self.beta_quinella
 
             ev = p * (est_div / 10)
 
@@ -208,13 +215,21 @@ class ComboEngine:
             probs = probs / probs.sum()
 
         rows = []
+        has_market_odds = "win_odds" in df.columns and df["win_odds"].notna().all()
+        win_odds = df["win_odds"].values.astype(float) if has_market_odds else None
+
         for idx_i, idx_j in combinations(range(n), 2):
             p = quinella_combo_prob(
                 probs[idx_i], probs[idx_j], probs, idx_i, idx_j, self.gamma
             )
-            est_div = estimate_quinella_dividend(p, takeout=self.takeout_quinella)
-            if self.beta_quinella < 1.0:
-                est_div = est_div ** self.beta_quinella
+            if win_odds is not None:
+                est_div = market_quinella_dividend(
+                    win_odds, idx_i, idx_j, takeout=self.takeout_quinella,
+                )
+            else:
+                est_div = estimate_quinella_dividend(p, takeout=self.takeout_quinella)
+                if self.beta_quinella < 1.0:
+                    est_div = est_div ** self.beta_quinella
             ev = p * (est_div / 10)
 
             rows.append({

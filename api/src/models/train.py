@@ -20,6 +20,11 @@ EXCLUDE_COLS = {
     "finish_sec",  # same-race time → leakage
     "dist_group",  # string column
     "prev_jockey", "prev_class",  # string columns
+    # in-race pace positions → leakage (parsed from running_position)
+    "pos_mid", "pos_final_call", "pos_improvement", "pos_mid_rank",
+    # current-race incident flags → leakage (parsed from incident_remark)
+    "excuse_interference", "excuse_medical", "excuse_slow_start",
+    "excuse_any", "excuse_clean",
 }
 
 LGB_PARAMS = {
@@ -108,23 +113,7 @@ class HorseRaceModel:
             })
             fold_model.fit(X_tr, y_tr)
 
-            # Platt calibration (ADR-004)
-            calibrator = CalibratedClassifierCV(
-                estimator=lgb.LGBMClassifier(scale_pos_weight=pos_weight, **{
-                    k: v for k, v in LGB_PARAMS.items() if k != "n_estimators"
-                }),
-                method='sigmoid', cv=3
-            )
-
-            # Need raw LightGBM for CalibratedClassifierCV to wrap
-            # Train on train, calibrate on validation
-            base_model = lgb.LGBMClassifier(scale_pos_weight=pos_weight, **{
-                k: v for k, v in LGB_PARAMS.items() if k != "n_estimators"
-            })
-            base_model.fit(X_tr, y_tr)
-            calibrator.fit(X_val, y_val)
-
-            y_prob = calibrator.predict_proba(X_val)[:, 1]
+            y_prob = fold_model.predict_proba(X_val)[:, 1]
             best_thresh = self._find_threshold(y_val, y_prob)
             y_pred = (y_prob >= best_thresh).astype(int)
 
