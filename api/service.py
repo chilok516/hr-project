@@ -160,7 +160,7 @@ class PredictionService:
         tags = []
         for _, r in signals.iterrows():
             tags.append([s for s in self.COLD_SIGNAL_FIELDS
-                         if s in signals.columns and int(r.get(s, 0) or 0) == 1])
+                         if s in signals.columns and r.get(s) == 1])
         return tags
 
     @staticmethod
