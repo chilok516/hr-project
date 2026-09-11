@@ -100,6 +100,23 @@ export interface LiveRaceSummary {
   race_date: string;
 }
 
+export interface HorseMetrics {
+  runs: number | null;
+  win_rate: number | null;
+  top3_rate: number | null;
+  avg_pos: number | null;
+  last_pos: number | null;
+  jockey_win_rate: number | null;
+  trainer_win_rate: number | null;
+  dist_runs: number | null;
+  dist_avg_pos: number | null;
+  venue_runs: number | null;
+  venue_avg_pos: number | null;
+  draw: number | null;
+  weight: number | null;
+  days_since: number | null;
+}
+
 export interface LiveHorse {
   horse_no: number;
   horse_name: string;
@@ -116,6 +133,8 @@ export interface LiveHorse {
   market_prob: number;
   place_prob: number;
   cold_score: number;
+  cold_signals: string[];
+  metrics: HorseMetrics;
 }
 
 export interface LiveCombo {

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { api } from "@/lib/api";
 import { useLang } from "@/lib/LanguageContext";
 import { pickName } from "@/lib/i18n";
+import { SignalChips, HorseMetrics } from "@/components/HorseWhy";
 
 function todayStr(): string {
   const d = new Date();
@@ -30,6 +31,7 @@ export default function UkLive() {
   const [prediction, setPrediction] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [expandedHorse, setExpandedHorse] = useState<string | null>(null);
 
   useEffect(() => {
     api.ukLiveRaces(todayStr()).then((d) => {
@@ -134,18 +136,38 @@ export default function UkLive() {
                 <thead>
                   <tr>
                     <th>#</th><th>{label("Horse", "馬名")}</th><th>{label("Trainer", "練馬師")}</th>
-                    <th>{label("Top2", "前二")}</th><th>{label("Fund", "基本面")}</th>
+                    <th>{label("Jky W%", "騎師勝率")}</th><th>{label("Top2", "前二")}</th><th>{label("Fund", "基本面")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {prediction.horses.map((h: any) => (
-                    <tr key={h.horse_no}>
-                      <td><span className="saddlecloth">{h.horse_no}</span></td>
-                      <td className="font-semibold">{pickName(lang, h.horse_name, h.horse_name_cn)}</td>
-                      <td className="text-muted">{h.trainer}</td>
-                      <td className="font-bold text-lg tabular-nums text-accent">{(h.top2_prob * 100).toFixed(1)}%</td>
-                      <td className="tabular-nums">{(h.fund_prob * 100).toFixed(1)}%</td>
-                    </tr>
+                    <Fragment key={h.horse_no}>
+                      <tr>
+                        <td><span className="saddlecloth">{h.horse_no}</span></td>
+                        <td className="font-semibold">
+                          <button
+                            onClick={() => setExpandedHorse(expandedHorse === h.horse_name ? null : h.horse_name)}
+                            className={`font-semibold transition-colors hover:text-accent ${expandedHorse === h.horse_name ? "text-accent" : ""}`}
+                          >
+                            {pickName(lang, h.horse_name, h.horse_name_cn)}
+                          </button>
+                          <div className="mt-1"><SignalChips signals={h.cold_signals} /></div>
+                        </td>
+                        <td className="text-muted">{pickName(lang, h.trainer, h.trainer_cn)}</td>
+                        <td className="tabular-nums">{h.metrics?.jockey_win_rate != null ? `${Math.round(h.metrics.jockey_win_rate)}%` : "—"}</td>
+                        <td className="font-bold text-lg tabular-nums text-accent">{(h.top2_prob * 100).toFixed(1)}%</td>
+                        <td className="tabular-nums">{(h.fund_prob * 100).toFixed(1)}%</td>
+                      </tr>
+                      {expandedHorse === h.horse_name && (
+                        <tr>
+                          <td colSpan={6} className="whitespace-normal bg-gray-50 p-4">
+                            <div className="mb-1.5 text-sm font-semibold text-muted">{label("Why picked", "點解被揀中")}</div>
+                            <SignalChips signals={h.cold_signals} />
+                            <div className="mt-3"><HorseMetrics h={h} /></div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

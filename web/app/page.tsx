@@ -9,6 +9,7 @@ import InfoTip from "@/components/InfoTip";
 import CollapsibleCard from "@/components/CollapsibleCard";
 import HorseForm from "@/components/HorseForm";
 import UkLive from "@/components/UkLive";
+import { SignalChips, HorseMetrics } from "@/components/HorseWhy";
 
 function raceTime(venue: string, raceNo: number): string {
   const base = venue === "HV" ? { h: 19, m: 15 } : { h: 13, m: 0 };
@@ -203,6 +204,8 @@ function HkLive() {
                       <th>{t("horseNo")}</th><th>{t("horse")}</th><th>{t("jockey")}</th>
                       <th><span className="inline-flex items-center">{t("draw")}<InfoTip text={t("drawTip")} /></span></th>
                       <th><span className="inline-flex items-center">{t("weight")}<InfoTip text={t("weightTip")} /></span></th>
+                      <th>{t("jockeyWin")}</th>
+                      <th>{t("trainerWin")}</th>
                       <th><span className="inline-flex items-center">{t("fund")}<InfoTip text={t("fundTip")} /></span></th>
                       <th><span className="inline-flex items-center">{t("top2")}<InfoTip text={t("top2Tip")} /></span></th>
                       {hasOdds && (
@@ -225,10 +228,13 @@ function HkLive() {
                             >
                               {pickName(lang, h.horse_name, h.horse_name_cn)}
                             </button>
+                            <div className="mt-1"><SignalChips signals={h.cold_signals} /></div>
                           </td>
                           <td className="text-muted">{pickName(lang, h.jockey, h.jockey_cn)}</td>
                           <td className="tabular-nums">{h.draw}</td>
                           <td className="tabular-nums">{h.weight}</td>
+                          <td className="tabular-nums">{h.metrics?.jockey_win_rate != null ? `${Math.round(h.metrics.jockey_win_rate)}%` : "—"}</td>
+                          <td className="tabular-nums">{h.metrics?.trainer_win_rate != null ? `${Math.round(h.metrics.trainer_win_rate)}%` : "—"}</td>
                           <td className="font-bold text-lg tabular-nums text-accent">{(h.fund_prob * 100).toFixed(1)}%</td>
                           <td className="tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</td>
                           {hasOdds && <td className="tabular-nums">{(h.market_prob * 100).toFixed(1)}%</td>}
@@ -242,14 +248,21 @@ function HkLive() {
                         </tr>
                         {expandedHorse === h.horse_name && (
                           <tr key={`${h.horse_no}-form`}>
-                            <td colSpan={hasOdds ? 9 : 7} className="whitespace-normal bg-gray-50 p-4">
-                              <HorseForm
-                                name={h.horse_name}
-                                date={prediction.race_info.date}
-                                distance={prediction.race_info.distance}
-                                venue={prediction.race_info.venue}
-                                going={prediction.race_info.going}
-                              />
+                            <td colSpan={hasOdds ? 11 : 9} className="whitespace-normal bg-gray-50 p-4">
+                              <div className="mb-3">
+                                <div className="mb-1.5 text-sm font-semibold text-muted">{t("whyPicked")}</div>
+                                <SignalChips signals={h.cold_signals} />
+                                <div className="mt-3"><HorseMetrics h={h} /></div>
+                              </div>
+                              <div className="border-t border-border pt-3">
+                                <HorseForm
+                                  name={h.horse_name}
+                                  date={prediction.race_info.date}
+                                  distance={prediction.race_info.distance}
+                                  venue={prediction.race_info.venue}
+                                  going={prediction.race_info.going}
+                                />
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -278,6 +291,9 @@ function HkLive() {
                   <div className="mb-3 text-sm text-muted">
                     {t("jockey")}：{pickName(lang, h.jockey, h.jockey_cn)}
                   </div>
+                  <div className="mb-3">
+                    <SignalChips signals={h.cold_signals} />
+                  </div>
                   <div className="grid grid-cols-3 gap-y-2.5 text-sm">
                     <div><div className="text-muted">{t("draw")}</div><div className="mt-0.5 font-medium tabular-nums">{h.draw}</div></div>
                     <div><div className="text-muted">{t("weight")}</div><div className="mt-0.5 font-medium tabular-nums">{h.weight}</div></div>
@@ -285,6 +301,10 @@ function HkLive() {
                     <div><div className="text-muted">{t("top2")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.top2_prob * 100).toFixed(1)}%</div></div>
                     {hasOdds && <div><div className="text-muted">{t("mkt")}</div><div className="mt-0.5 font-medium tabular-nums">{(h.market_prob * 100).toFixed(1)}%</div></div>}
                     {hasOdds && <div><div className="text-muted">{t("cold")}</div><div className="mt-0.5 font-medium tabular-nums">{h.cold_score.toFixed(1)}</div></div>}
+                  </div>
+                  <div className="mt-3 border-t border-border pt-3">
+                    <div className="mb-1.5 text-sm font-semibold text-muted">{t("whyPicked")}</div>
+                    <HorseMetrics h={h} />
                   </div>
                   <div className="mt-3 border-t border-border pt-3">
                     <HorseForm

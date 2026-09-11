@@ -67,6 +67,15 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     top2Tip: "Model probability the horse finishes in the top two (quinella).",
     mktTip: "Implied win probability derived from the market odds.",
     coldTip: "Cold score — how undervalued the market has priced this horse; higher means a bigger longshot.",
+    whyPicked: "Why picked",
+    jockeyWin: "Jky W%",
+    trainerWin: "Trn W%",
+    winRate: "Win",
+    top3Rate: "Top3",
+    avgPos: "Avg pos",
+    distForm: "Same dist",
+    venueForm: "Same venue",
+    daysSince: "Days off",
   },
   zh: {
     live: "即場",
@@ -130,6 +139,15 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     top2Tip: "模型預測馬匹跑入頭兩名（連贏）的機率。",
     mktTip: "由市場賠率推算的隱含贏馬機率。",
     coldTip: "冷門分 — 馬匹被市場低估的程度，越高代表越冷門。",
+    whyPicked: "點解被揀中",
+    jockeyWin: "騎師勝率",
+    trainerWin: "練馬師勝率",
+    winRate: "勝率",
+    top3Rate: "上名率",
+    avgPos: "平均名次",
+    distForm: "同路程",
+    venueForm: "同場地",
+    daysSince: "休養日數",
   },
 };
 
@@ -172,4 +190,21 @@ export function venueLabel(v: string, lang: Lang): string {
 
 export function pickName(lang: Lang, en: string, cn: string): string {
   return lang === "zh" && cn ? cn : en;
+}
+
+export const SIGNAL_LABEL: Record<string, { en: string; zh: string }> = {
+  class_drop: { en: "Class drop", zh: "降班" },
+  dist_specialist: { en: "Distance specialist", zh: "路程專家" },
+  track_switch: { en: "Venue preference", zh: "場地偏好" },
+  weight_advantage: { en: "Weight advantage", zh: "負磅優勢" },
+  jockey_upgrade: { en: "Jockey upgrade", zh: "騎師升級" },
+  trainer_in_form: { en: "Trainer in form", zh: "練馬師旺勢" },
+  fresh_horse: { en: "Fresh", zh: "休後復出" },
+  excuse_last_run: { en: "Excuse last run", zh: "上場藉口" },
+};
+
+export function signalLabel(key: string, lang: Lang): string {
+  const s = SIGNAL_LABEL[key];
+  if (!s) return key;
+  return lang === "zh" ? s.zh : s.en;
 }

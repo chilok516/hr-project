@@ -142,6 +142,76 @@ class PredictionService:
                 self.uk_bets_detail = json.load(f)
             logger.info(f"UK bets loaded: {len(self.uk_bets_detail.get('bets', []))} bets")
 
+    # ---- Why-picked: cold signals + horse metrics ----
+
+    COLD_SIGNAL_FIELDS = [
+        "class_drop", "dist_specialist", "track_switch", "weight_advantage",
+        "jockey_upgrade", "trainer_in_form", "fresh_horse", "excuse_last_run",
+    ]
+
+    def _cold_signal_tags(self, df: pd.DataFrame) -> list:
+        """Per-row list of fired cold-signal tag keys (no calibration needed)."""
+        try:
+            signals = self.cold_calibrator.compute_signals(df)
+        except Exception as e:
+            logger.warning(f"cold signal computation failed: {e}")
+            return [[] for _ in range(len(df))]
+
+        tags = []
+        for _, r in signals.iterrows():
+            tags.append([s for s in self.COLD_SIGNAL_FIELDS
+                         if s in signals.columns and int(r.get(s, 0) or 0) == 1])
+        return tags
+
+    @staticmethod
+    def _f(v, ndigits: int = 1):
+        try:
+            f = float(v)
+            if pd.isna(f):
+                return None
+            return round(f, ndigits)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _pct(v):
+        try:
+            f = float(v)
+            if pd.isna(f):
+                return None
+            return round(f * 100, 0)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _int(v):
+        try:
+            f = float(v)
+            if pd.isna(f):
+                return None
+            return int(f)
+        except (TypeError, ValueError):
+            return None
+
+    def _horse_metrics(self, row) -> dict:
+        """Extract human-readable form/condition metrics from a feature row."""
+        return {
+            "runs": self._int(row.get("horse_runs")),
+            "win_rate": self._pct(row.get("horse_win_rate")),
+            "top3_rate": self._pct(row.get("horse_top3_rate")),
+            "avg_pos": self._f(row.get("horse_avg_pos")),
+            "last_pos": self._int(row.get("horse_last_pos")),
+            "jockey_win_rate": self._pct(row.get("jockey_win_rate")),
+            "trainer_win_rate": self._pct(row.get("trainer_win_rate")),
+            "dist_runs": self._int(row.get("horse_dist_runs")),
+            "dist_avg_pos": self._f(row.get("horse_dist_avg_pos")),
+            "venue_runs": self._int(row.get("horse_venue_runs")),
+            "venue_avg_pos": self._f(row.get("horse_venue_avg_pos")),
+            "draw": self._int(row.get("draw")),
+            "weight": self._int(row.get("weight")),
+            "days_since": self._int(row.get("days_since_last_run")),
+        }
+
     def _region_ctx(self, region: str) -> dict:
         if region == "uk":
             return {
@@ -371,20 +441,21 @@ class PredictionService:
 
         pred = self.predictor.predict_race(live_feat)
 
-        # Cold scores
+        # Cold scores + signal tags (keyed by original index to survive pred's sort)
         try:
-            cold_scores = self.cold_calibrator.score(live_feat)
+            cold_scores = pd.Series(self.cold_calibrator.score(live_feat), index=live_feat.index)
         except Exception:
-            cold_scores = np.zeros(len(live_feat))
+            cold_scores = pd.Series(0.0, index=live_feat.index)
+        signal_tags = pd.Series(self._cold_signal_tags(live_feat), index=live_feat.index)
 
         horses = []
         cold_by_no = {}
-        for i, (_, row) in enumerate(pred.iterrows()):
+        for idx, row in pred.iterrows():
             hno = int(row.get("horse_no", 0))
             hname = str(row.get("horse_name", ""))
             jname = str(row.get("jockey", ""))
             tname = str(row.get("trainer", ""))
-            cs = float(cold_scores[i]) if i < len(cold_scores) else 0.0
+            cs = float(cold_scores.get(idx, 0.0))
             cold_by_no[hno] = cs
             horses.append({
                 "horse_no": hno,
@@ -402,6 +473,8 @@ class PredictionService:
                 "market_prob": float(row.get("market_prob", 0)),
                 "place_prob": float(row.get("place_prob", 0)),
                 "cold_score": round(cs, 1),
+                "cold_signals": list(signal_tags.get(idx, [])),
+                "metrics": self._horse_metrics(row),
             })
 
         # Combos
@@ -519,9 +592,10 @@ class PredictionService:
         pred = self.uk_predictor.predict_race(live_feat)
 
         cn_lookup = {r["horse_no"]: r for r in runners}
+        signal_tags = pd.Series(self._cold_signal_tags(live_feat), index=live_feat.index)
 
         horses = []
-        for _, row in pred.iterrows():
+        for idx, row in pred.iterrows():
             hname = str(row.get("horse_name", ""))
             hno = int(row.get("horse_no", 0))
             rr = cn_lookup.get(hno, {})
@@ -540,6 +614,8 @@ class PredictionService:
                 "top2_prob": float(row.get("top2_prob", 0)),
                 "market_prob": float(row.get("market_prob", 0)),
                 "place_prob": float(row.get("place_prob", 0)),
+                "cold_signals": list(signal_tags.get(idx, [])),
+                "metrics": self._horse_metrics(row),
             })
 
         combos = []
