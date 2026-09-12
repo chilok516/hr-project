@@ -25,7 +25,8 @@ interface UkRace {
 }
 
 export default function UkLive() {
-  const { lang } = useLang();
+  const { lang, t } = useLang();
+  const [date, setDate] = useState(todayStr());
   const [races, setRaces] = useState<UkRace[]>([]);
   const [selected, setSelected] = useState<UkRace | null>(null);
   const [prediction, setPrediction] = useState<any>(null);
@@ -34,14 +35,19 @@ export default function UkLive() {
   const [expandedHorse, setExpandedHorse] = useState<string | null>(null);
 
   useEffect(() => {
-    api.ukLiveRaces(todayStr()).then((d) => {
+    setRaces([]);
+    setSelected(null);
+    setPrediction(null);
+    setError("");
+    api.ukLiveRaces(date).then((d) => {
       const list: UkRace[] = [];
+      const compact = date.replace(/-/g, "");
       for (const m of d.meetings || []) {
         const vc = String(m.venueCode || "");
         const country = (m as any).country_name || "";
         for (const r of (m as any).races || []) {
           list.push({
-            meeting: `${todayStr().replace(/-/g, "")}_${vc}`,
+            meeting: `${compact}_${vc}`,
             race_no: Number(r.no),
             name: r.raceName_en || "",
             name_ch: r.raceName_ch || "",
@@ -54,7 +60,7 @@ export default function UkLive() {
       setRaces(list);
       if (list.length) setSelected(list[0]);
     }).catch((e) => setError("Failed to load simulcast races: " + e.message));
-  }, []);
+  }, [date]);
 
   useEffect(() => {
     if (!selected) { setPrediction(null); return; }
@@ -81,6 +87,13 @@ export default function UkLive() {
         <p className="mt-1 text-sm text-muted">
           {label("Tonight's HKJC simulcast races — top picks & quinella combos", "今晚 HKJC 越洋轉播賽事 — 精選 + 連贏組合")}
         </p>
+      </div>
+
+      <div className="card flex flex-wrap items-center gap-3">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" />
+        <button className="btn" onClick={() => setDate(todayStr())}>
+          {t("today")}
+        </button>
       </div>
 
       {error && (
