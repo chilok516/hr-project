@@ -102,7 +102,9 @@ export default function UkLive() {
 
       {races.length === 0 ? (
         <div className="card py-12 text-center">
-          <p className="text-muted">{label("No simulcast races today", "今日暫無越洋轉播賽事")}</p>
+          <p className="text-muted">
+            {lang === "zh" ? `${date} 沒有越洋轉播賽事` : `No simulcast races for ${date}`}
+          </p>
         </div>
       ) : (
         <div className="-mx-4 flex gap-2.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:overflow-visible md:px-0">
