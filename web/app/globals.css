@@ -7,6 +7,33 @@ body {
   font-size: 16px;
 }
 
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+  body {
+    background: #fff !important;
+  }
+  header,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-root {
+    columns: 2;
+    column-gap: 6mm;
+  }
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
 @layer components {
   .card {
     @apply rounded-2xl border border-border bg-card p-5 shadow-sm;

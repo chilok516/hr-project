@@ -162,6 +162,14 @@ export interface LivePrediction {
   risk_caps: { max_per_race: number; max_per_day: number };
 }
 
+export interface ExportDay {
+  region: string;
+  date: string;
+  venue: string;
+  generated_at: string;
+  races: LivePrediction[];
+}
+
 export interface HorseFormConditions {
   runs: number;
   win_rate: number;
@@ -237,6 +245,12 @@ export const api = {
   livePredict: (date: string, venue: string, race_no: number) =>
     getJson<LivePrediction>(`/api/live/predict?date=${date}&venue=${venue}&race_no=${race_no}`),
   liveStatus: () => getJson<Record<string, unknown>>("/api/live/status"),
+  liveExport: (date: string, region = "hk") =>
+    getJson<ExportDay>(
+      region === "uk"
+        ? `/api/live/uk/export?date=${encodeURIComponent(date)}`
+        : `/api/live/export?date=${encodeURIComponent(date)}`,
+    ),
   ukLiveRaces: (date: string) => getJson<{ meetings: Record<string, unknown>[] }>(`/api/live/uk/races?date=${date}`),
   ukLivePredict: (meeting: string, race_no: number) =>
     getJson<Prediction>(`/api/live/uk/predict?meeting=${encodeURIComponent(meeting)}&race_no=${race_no}`),

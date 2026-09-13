@@ -76,6 +76,7 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     distForm: "Same dist",
     venueForm: "Same venue",
     daysSince: "Days off",
+    exportPdf: "Export PDF",
   },
   zh: {
     live: "即場",
@@ -148,6 +149,7 @@ export const UI: Record<Lang, Record<string, UIString>> = {
     distForm: "同路程",
     venueForm: "同場地",
     daysSince: "休養日數",
+    exportPdf: "匯出 PDF",
   },
 };
 

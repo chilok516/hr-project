@@ -72,6 +72,11 @@ def live_predict(date: str, venue: str = "ST", race_no: int = 1):
     return result
 
 
+@app.get("/live/export")
+def live_export(date: str = Query(..., description="YYYY-MM-DD")):
+    return service.export_live_day(date)
+
+
 @app.get("/live/status")
 def live_status():
     return {
@@ -93,6 +98,11 @@ def live_uk_predict(meeting: str = Query(...), race_no: int = Query(1)):
     if "error" in result:
         raise HTTPException(status_code=404, detail=result["error"])
     return result
+
+
+@app.get("/live/uk/export")
+def live_uk_export(date: str = Query(..., description="YYYY-MM-DD")):
+    return service.export_uk_live_day(date)
 
 
 @app.get("/horse/form")

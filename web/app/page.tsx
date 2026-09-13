@@ -112,6 +112,12 @@ function HkLive() {
         <button className="btn" onClick={() => setDate(todayStr())}>
           {t("today")}
         </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => window.open(`/export?date=${date}&region=hk`, "_blank")}
+        >
+          {t("exportPdf")}
+        </button>
       </div>
 
       {races.length === 0 ? (

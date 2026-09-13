@@ -94,6 +94,12 @@ export default function UkLive() {
         <button className="btn" onClick={() => setDate(todayStr())}>
           {t("today")}
         </button>
+        <button
+          className="btn btn-primary"
+          onClick={() => window.open(`/export?date=${date}&region=uk`, "_blank")}
+        >
+          {t("exportPdf")}
+        </button>
       </div>
 
       {error && (

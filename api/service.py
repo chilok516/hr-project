@@ -3,6 +3,7 @@
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -669,6 +670,62 @@ class PredictionService:
         }
         self._uk_live_cache[cache_key] = result
         return result
+
+    # ---- Day export (all races for PDF) ----
+
+    def export_live_day(self, date_str: str) -> dict:
+        """All HK races' predictions for a date (for one-page PDF export)."""
+        races_out = []
+        for r in self.list_live_races(date_str):
+            try:
+                pred = self.live_predict(date_str, r["venue"], r["race_no"])
+            except Exception as e:
+                logger.warning(f"HK export race failed {date_str} R{r['race_no']}: {e}")
+                continue
+            if pred.get("error"):
+                continue
+            races_out.append(pred)
+
+        return {
+            "region": "hk",
+            "date": date_str,
+            "venue": races_out[0]["race_info"]["venue"] if races_out else "",
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "races": races_out,
+        }
+
+    def export_uk_live_day(self, date_str: str) -> dict:
+        """All UK simulcast races' predictions for a date (for one-page PDF export)."""
+        from src.scraper.hkjc_simulcast import list_meetings
+
+        compact = date_str.replace("-", "")
+        races_out = []
+        for m in list_meetings(date_str):
+            vc = str(m.get("venueCode") or "")
+            meeting = f"{compact}_{vc}"
+            for r in (m.get("races") or []):
+                try:
+                    rn = int(r.get("no") or 0)
+                except (TypeError, ValueError):
+                    continue
+                if not rn:
+                    continue
+                try:
+                    pred = self.uk_live_predict(meeting, rn)
+                except Exception as e:
+                    logger.warning(f"UK export race failed {meeting} R{rn}: {e}")
+                    continue
+                if pred.get("error"):
+                    continue
+                races_out.append(pred)
+
+        return {
+            "region": "uk",
+            "date": date_str,
+            "venue": "",
+            "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "races": races_out,
+        }
 
     # ---- Horse form (past performance) ----
 
