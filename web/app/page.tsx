@@ -11,14 +11,6 @@ import HorseForm from "@/components/HorseForm";
 import UkLive from "@/components/UkLive";
 import { SignalChips, HorseMetrics } from "@/components/HorseWhy";
 
-function raceTime(venue: string, raceNo: number): string {
-  const base = venue === "HV" ? { h: 19, m: 15 } : { h: 13, m: 0 };
-  const totalMin = base.h * 60 + base.m + 30 * (raceNo - 1);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-}
-
 function todayStr(): string {
   const d = new Date();
   const y = d.getFullYear();
@@ -85,8 +77,8 @@ function HkLive() {
     return () => clearInterval(t);
   }, []);
 
-  function countdown(v: string, rn: number): string {
-    const time = raceTime(v, rn);
+  function countdown(time: string): string {
+    if (!time || !time.includes(":")) return "—";
     const [h, m] = time.split(":").map(Number);
     const target = new Date(`${date}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`);
     const diff = target.getTime() - now;
@@ -156,7 +148,7 @@ function HkLive() {
                       active ? "text-accent" : "text-foreground"
                     }`}
                   >
-                    {raceTime(r.venue, r.race_no)}
+                    {r.post_time || "—"}
                   </span>
                   <span className={`mt-1 text-sm leading-tight ${active ? "text-accent/80" : "text-muted"}`}>
                     {venueLabel(r.venue, lang)} · {distLabel(r.distance, lang)} · {classLabel(r.race_class, lang)} · {goingLabel(r.going, lang)}
@@ -183,13 +175,13 @@ function HkLive() {
                 {lang === "zh" ? "第" : "R"}{selected.race_no} · {classLabel(prediction.race_info.race_class, lang)} · {distLabel(prediction.race_info.distance, lang)} · {goingLabel(prediction.race_info.going, lang)}
               </h2>
               <p className="mt-1 text-sm text-muted">
-                {prediction.race_info.date} · {venueLabel(prediction.race_info.venue, lang)} · {raceTime(selected.venue, selected.race_no)}
+                {prediction.race_info.date} · {venueLabel(prediction.race_info.venue, lang)} · {prediction.race_info.post_time || "—"}
               </p>
             </div>
             <div className="text-right">
               <div className="text-sm uppercase tracking-wide text-muted">{t("countdown")}</div>
               <div className="font-mono text-4xl font-bold tabular-nums text-accent">
-                {countdown(selected.venue, selected.race_no)}
+                {countdown(selected.post_time || "")}
               </div>
             </div>
           </div>

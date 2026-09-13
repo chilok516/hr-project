@@ -7,6 +7,7 @@ export interface RaceInfo {
   distance: number;
   race_class: string;
   going: string;
+  post_time?: string;
 }
 
 export interface Horse {
@@ -98,6 +99,7 @@ export interface LiveRaceSummary {
   race_class: string;
   going: string;
   race_date: string;
+  post_time?: string;
 }
 
 export interface HorseMetrics {

@@ -29,6 +29,7 @@ class PredictionService:
         self.race_card_scraper = RaceCardScraper()
         # Cache: date -> list of race card results (avoid re-scrape per request)
         self._live_cache: dict = {}
+        self._live_races_cache: dict = {}
         self.cn_names: dict = {"horses": {}, "jockeys": {}, "trainers": {}}
         # UK artifacts (models_uk / uk_features.csv / uk_race_results.csv)
         self.uk_predictor: RacePredictor = None
@@ -350,30 +351,44 @@ class PredictionService:
         return synthetic_race_card(self.LIVE_SOURCE_DATE, race_no, slash_date, venue=venue)
 
     def list_live_races(self, date_str: str) -> list:
-        """List races for a live date (synthetic during off-season)."""
+        """List a live date's races from the real HKJC race card (cached)."""
         slash_date = date_str.replace("-", "/")
-        source = self.LIVE_SOURCE_DATE
+        if date_str in self._live_races_cache:
+            return self._live_races_cache[date_str]
 
-        if self.raw_df is None:
-            return []
+        from concurrent.futures import ThreadPoolExecutor
 
-        source_races = self.raw_df[self.raw_df["race_date"] == source]
-        if source_races.empty:
-            return []
+        def fetch(rn: int):
+            try:
+                return rn, self.race_card_scraper.get_race_card(slash_date, "ST", rn)
+            except Exception:
+                return rn, None
+
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            cards = list(ex.map(fetch, range(1, 13)))
 
         races = []
-        for (venue, race_no), grp in source_races.groupby(["venue", "race_no"]):
-            first = grp.iloc[0]
+        for rn, card in cards:
+            if not card:
+                continue
+            runners = card.get("runners") or []
+            info = card.get("race_info") or {}
+            if not runners:
+                continue
             races.append({
-                "venue": venue,
-                "race_no": int(race_no),
-                "n_runners": len(grp),
-                "distance": int(first.get("distance", 0)),
-                "race_class": str(first.get("race_class", "")),
-                "going": str(first.get("going", "")),
+                "venue": info.get("venue", "ST"),
+                "race_no": rn,
+                "n_runners": len(runners),
+                "distance": int(info.get("distance", 0) or 0),
+                "race_class": str(info.get("race_class", "") or ""),
+                "going": str(info.get("going", "") or ""),
+                "post_time": str(info.get("post_time", "") or ""),
                 "race_date": slash_date,
             })
-        return sorted(races, key=lambda r: (r["venue"], r["race_no"]))
+
+        if races:
+            self._live_races_cache[date_str] = races
+        return races
 
     def live_predict(self, date_str: str, venue: str, race_no: int) -> dict:
         """Predict an upcoming race (no results yet)."""
@@ -397,6 +412,7 @@ class PredictionService:
         race_info.setdefault("race_class", "")
         race_info.setdefault("distance", 0)
         race_info.setdefault("going", "")
+        race_info.setdefault("post_time", "")
 
         result = self.compute_live_prediction(runners, race_info)
         result["race_info"] = {
@@ -406,6 +422,7 @@ class PredictionService:
             "distance": int(race_info.get("distance", 0)),
             "race_class": str(race_info.get("race_class", "")),
             "going": str(race_info.get("going", "")),
+            "post_time": str(race_info.get("post_time", "") or ""),
         }
         self._live_cache[cache_key] = result
         return result

@@ -109,6 +109,17 @@ class RaceCardScraper:
         m = re.search(rf"Race\s*{race_no}\s*[-–].*?(?=Race\s*{race_no + 1}\b|SETUP)", text, re.DOTALL)
         seg = m.group(0) if m else ""
 
+        # Venue (page ignores ?Venue=, so trust the header)
+        if re.search(r"Happy\s*Valley", seg, re.IGNORECASE):
+            header["venue"] = "HV"
+        elif re.search(r"Sha\s*Tin", seg, re.IGNORECASE):
+            header["venue"] = "ST"
+
+        # Post time — first HH:MM in the header (e.g. '..., Sha Tin, 13:30 Turf, ...')
+        time_m = re.search(r"\b(\d{1,2}:\d{2})\b", seg)
+        if time_m:
+            header["post_time"] = time_m.group(1)
+
         dist_m = re.search(r"(\d{3,4})M", seg)
         if dist_m:
             header["distance"] = int(dist_m.group(1))
@@ -139,32 +150,45 @@ class RaceCardScraper:
         return header
 
     def _parse_runners(self, soup) -> list:
-        """Parse declared runners via header-name → index mapping (layout-agnostic)."""
-        runners = []
+        """Parse declared runners via header-name → index mapping (layout-agnostic).
+
+        Some pages have a giant merged header row (hundreds of cells); require the
+        data rows to match the header row's cell count, and keep the table that
+        yields the most runners.
+        """
+        best = []
 
         for table in soup.find_all("table"):
             header_map = None
+            header_len = 0
+            table_runners = []
+
             for row in table.find_all("tr"):
                 cells = row.find_all(["th", "td"])
                 texts = [c.get_text(strip=True) for c in cells]
 
-                # Detect header row and map column names to indices.
-                if header_map is None and "Horse No." in texts and "Jockey" in texts and "Trainer" in texts:
-                    header_map = {
-                        name: i for i, name in enumerate(texts)
-                        if name in ("Horse No.", "Horse", "Brand No.", "Wt.", "Jockey", "Draw",
-                                    "Trainer", "Horse Wt. (Declaration)")
-                    }
+                if header_map is None:
+                    if ("Horse No." in texts and "Jockey" in texts
+                            and "Trainer" in texts and "Horse" in texts):
+                        header_map = {
+                            name: i for i, name in enumerate(texts)
+                            if name in ("Horse No.", "Horse", "Brand No.", "Wt.", "Jockey", "Draw",
+                                        "Trainer", "Horse Wt. (Declaration)")
+                        }
+                        header_len = len(texts)
                     continue
 
-                if not header_map or "Horse No." not in header_map:
+                # Data rows must match the header's column count.
+                if len(texts) != header_len:
+                    continue
+                if "Horse No." not in header_map:
                     continue
 
                 try:
                     horse_no = int(texts[header_map["Horse No."]]) if texts[header_map["Horse No."]].isdigit() else 0
                     if not horse_no:
                         continue
-                    runners.append(RaceCardRunner(
+                    table_runners.append(RaceCardRunner(
                         horse_no=horse_no,
                         horse_name=texts[header_map.get("Horse", -1)] if "Horse" in header_map else "",
                         jockey=texts[header_map.get("Jockey", -1)] if "Jockey" in header_map else "",
@@ -177,10 +201,10 @@ class RaceCardScraper:
                 except (ValueError, IndexError):
                     continue
 
-            if runners:
-                break
+            if len(table_runners) > len(best):
+                best = table_runners
 
-        return runners
+        return best
 
 
 def _safe_int(text: str) -> int:
